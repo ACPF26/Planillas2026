@@ -818,7 +818,6 @@
 <!-- LOGIN -->
 <div id="login-screen" style="display:none;">
   <div class="login-card">
-    <button onclick="volverMenu()" style="background:none;border:none;color:#999;font-size:13px;cursor:pointer;margin-bottom:8px;align-self:flex-start;font-family:Arial,sans-serif;">← Volver</button>
     <div class="login-logo"><img src="./logo.png" alt="ACPF" style="width:200px;height:auto;object-fit:contain;"></div>
     <div class="login-sub">Asociación Civil Paceña de Fútbol</div>
     <h2>Ingresar</h2>
@@ -1108,7 +1107,6 @@ async function doLogout() {
   document.getElementById("pwd-input").value = "";
   document.getElementById("email-input").value = "";
   document.getElementById("login-error").textContent = "";
-  volverMenu();
 }
 
 // ══════════════════════════════════
@@ -1667,7 +1665,7 @@ window.addEventListener("load", () => {
   const introLogo = document.getElementById("intro-logo");
   const introSub  = document.getElementById("intro-sub");
   const intro     = document.getElementById("intro-screen");
-  const menu      = document.getElementById("menu-screen");
+  const menu      = document.getElementById("login-screen"); // sin menú público por ahora — ver volverMenu()
 
   // Fase 1: logo sube y aparece
   setTimeout(() => {
