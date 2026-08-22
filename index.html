@@ -786,11 +786,10 @@
   .btn-mini.danger { background: var(--red); }
   .add-fixture-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; padding: 12px; background: #f8f9ff; border-radius: 10px; }
   .add-fixture-form select, .add-fixture-form input { padding: 7px 10px; border: 1.5px solid #d0d8ff; border-radius: 8px; font-size: 12px; font-family: Arial, sans-serif; }
-  details.miclub-plantel summary { cursor: pointer; font-weight: 700; color: #1a3fcc; font-family: Arial, sans-serif; font-size: 14px; padding: 4px 0; }
 
   /* ── Header de club (Mi Club) ── */
   .club-hero {
-    padding: 22px 60px 20px 20px;
+    padding: 26px 20px 40px 20px;
     display: flex; flex-direction: row; align-items: center; gap: 16px;
     text-align: left;
   }
@@ -800,14 +799,6 @@
   .club-hero-nombre {
     font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 2px;
     text-transform: uppercase; color: white; line-height: 1.05;
-  }
-  .club-hero-logout {
-    position: absolute; top: 16px; right: 16px;
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: white; border-radius: 8px; padding: 6px 12px; font-size: 12px;
-    cursor: pointer; font-family: Arial, sans-serif;
   }
 
   /* ── Barra inferior glassmorfismo (categorías + salir) ── */
@@ -932,7 +923,6 @@
 <div id="miclub-screen" class="hero-bg" style="display:none;min-height:100vh;">
   <div class="bottom-nav-wrap">
     <div class="club-hero" id="miclub-hero" style="position:relative;background:none;">
-      <button class="club-hero-logout" onclick="doLogout()">Cerrar sesión</button>
       <img class="club-hero-escudo" id="miclub-escudo" src="./logo2.png" alt="">
       <span class="club-hero-nombre" id="miclub-nombre">Mi Club</span>
     </div>
@@ -1019,7 +1009,7 @@
           </div>
           <div class="form-group">
             <label>Fecha Calendario</label>
-            <input type="text" id="fecha-cal" readonly style="background:#f8f9ff; color:#6b7280;">
+            <input type="date" id="fecha-cal">
           </div>
         </div>
 
@@ -1258,7 +1248,8 @@ async function doLogin() {
     const v = CLUBES_VISUAL[club];
     if (v) document.getElementById("miclub-escudo").src = v.logo;
     const color = clubColor(club);
-    const gradiente = `linear-gradient(135deg, ${color} 0%, #0d1730 100%)`;
+    // Degradado que se disuelve hacia abajo, para que no corte feo contra el fondo.
+    const gradiente = `linear-gradient(180deg, ${color}f0 0%, ${color}c0 35%, ${color}40 70%, transparent 100%)`;
     document.getElementById("miclub-hero").style.background = gradiente;
     document.getElementById("miclub-bottom-nav").style.background =
       `linear-gradient(135deg, ${color}cc 0%, rgba(13,23,48,0.7) 100%)`;
@@ -1304,11 +1295,6 @@ async function initApp() {
     o.textContent = `Fecha ${i}`;
     selFecha.appendChild(o);
   }
-  selFecha.addEventListener("change", () => {
-    document.getElementById("fecha-cal").value = new Date().toLocaleDateString("es-AR", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric"
-    });
-  });
 
   await ensureClubes();
   const nombresOrdenados = Object.keys(clubesPorNombre).sort((a, b) => a.localeCompare(b, "es"));
@@ -2055,7 +2041,7 @@ function renderSuspendidos(susp, cat) {
       ${susp.map(r => `
       <tr>
         <td style="font-weight:600">${esc(r.jugador)}</td>
-        <td>${clubBadge(r.club)}${esc(r.club)}</td>
+        <td>${esc(r.club)}</td>
         <td>${esc(r.tipo)}</td>
         <td style="font-weight:700;color:#e03030;text-align:center;">Fecha ${r.fecha_fin}</td>
       </tr>`).join("")}
@@ -2118,19 +2104,19 @@ async function renderFixture(cat, editable) {
       if (!editable) {
         return `<tr>
           <td>Fecha ${r.fecha_nro}</td>
-          <td>${clubBadge(localNombre)}${esc(localNombre)}</td>
+          <td>${esc(localNombre)}</td>
           <td style="text-align:center;font-weight:700;">${r.goles_local ?? "–"} - ${r.goles_visitante ?? "–"}</td>
-          <td>${clubBadge(visNombre)}${esc(visNombre)}</td>
+          <td>${esc(visNombre)}</td>
           <td>${r.estado === "Jugado" ? "✅ Jugado" : "⏳ Pendiente"}</td>
         </tr>`;
       }
       return `<tr class="edit-row">
         <td>Fecha ${r.fecha_nro}</td>
-        <td>${clubBadge(localNombre)}${esc(localNombre)}</td>
+        <td>${esc(localNombre)}</td>
         <td style="text-align:center;white-space:nowrap;">
           <input type="number" id="fx-gl-${r.id}" value="${r.goles_local ?? ""}" min="0"> - <input type="number" id="fx-gv-${r.id}" value="${r.goles_visitante ?? ""}" min="0">
         </td>
-        <td>${clubBadge(visNombre)}${esc(visNombre)}</td>
+        <td>${esc(visNombre)}</td>
         <td>
           <select id="fx-est-${r.id}">
             <option value="Pendiente" ${r.estado === "Pendiente" ? "selected" : ""}>Pendiente</option>
@@ -2212,7 +2198,7 @@ async function renderSanciones(editable) {
         if (!editable) {
           return `<tr>
             <td style="font-weight:600">${esc(r.jugadores?.nombre || "")}</td>
-            <td>${clubBadge(club)}${esc(club)}</td>
+            <td>${esc(club)}</td>
             <td>${esc(r.categoria)}</td>
             <td>${esc(r.tipo)}</td>
             <td style="text-align:center;">Fecha ${r.fecha_inicio}</td>
@@ -2222,7 +2208,7 @@ async function renderSanciones(editable) {
         }
         return `<tr class="edit-row">
           <td style="font-weight:600">${esc(r.jugadores?.nombre || "")}</td>
-          <td>${clubBadge(club)}${esc(club)}</td>
+          <td>${esc(club)}</td>
           <td>${esc(r.categoria)}</td>
           <td>${esc(r.tipo)}</td>
           <td style="text-align:center;">Fecha ${r.fecha_inicio}</td>
@@ -2360,12 +2346,12 @@ async function renderMiClub() {
   if (sec === "plantel") {
     const { data } = await sb.from("jugadores").select("nombre").eq("club_id", clubId).eq("categoria", cat).eq("activo", true).order("nombre");
     const plantel = data || [];
-    cont.innerHTML = `<details class="miclub-plantel"><summary>👥 Plantel — ${esc(cat)} (${plantel.length})</summary>
-      <div class="cons-card" style="margin-top:10px;">
+    cont.innerHTML = `<div class="cons-card">
+      <h3>👥 Plantel — ${esc(cat)} (${plantel.length})</h3>
       ${plantel.length ? `<table class="cons-table" style="width:100%;"><thead><tr><th>#</th><th>Jugador</th></tr></thead>
       <tbody>${plantel.map((p, i) => `<tr><td class="rank">${i+1}</td><td>${esc(p.nombre)}</td></tr>`).join("")}</tbody></table>`
       : `<div class="no-data" style="padding:16px;">Sin jugadores cargados en ${esc(cat)}.</div>`}
-      </div></details>`;
+      </div>`;
     return;
   }
 }
