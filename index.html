@@ -32,7 +32,18 @@
     color: var(--text);
   }
 
-  /* ── LOGIN ── */
+  /* ── LOGIN (glassmorfismo) ── */
+  /* Fondo compartido intro/login. Para usar la foto de cancha: subir el
+     archivo al repo (ej. cancha.jpg) y agregar acá
+     background-image: url('./cancha.jpg'); background-size: cover; background-position: center;
+     — mientras tanto usa el degradado de la marca como placeholder. */
+  .hero-bg {
+    background:
+      linear-gradient(180deg, rgba(4,10,30,0.55) 0%, rgba(10,20,60,0.72) 100%),
+      linear-gradient(160deg, #040d24 0%, #0d1730 45%, #162050 100%);
+    background-size: cover;
+    background-position: center;
+  }
   #login-screen {
     min-height: 100vh;
     display: flex;
@@ -41,24 +52,27 @@
     padding: 20px;
   }
   .login-card {
-    background: var(--card-bg);
-    border-radius: 20px;
-    padding: 48px 40px;
+    background: rgba(255,255,255,0.10);
+    backdrop-filter: blur(22px) saturate(140%);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 24px;
+    padding: 48px 36px;
     width: 100%;
     max-width: 400px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
     text-align: center;
   }
   .login-logo {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 64px;
-    color: var(--blue);
+    color: white;
     letter-spacing: 4px;
     line-height: 1;
   }
   .login-sub {
     font-size: 12px;
-    color: #1a1f3a;
+    color: rgba(255,255,255,0.65);
     letter-spacing: 2px;
     text-transform: uppercase;
     margin-bottom: 36px;
@@ -67,42 +81,45 @@
   .login-card h2 {
     font-size: 16px;
     font-weight: 600;
-    color: var(--text);
+    color: white;
     margin-bottom: 20px;
   }
   .login-card input {
     width: 100%;
     padding: 14px 18px;
-    border: 2px solid var(--gray);
-    border-radius: 10px;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    border-radius: 12px;
     font-size: 16px;
     font-family: 'Inter', sans-serif;
-    color: var(--text);
+    color: white;
+    background: rgba(255,255,255,0.08);
     outline: none;
-    transition: border 0.2s;
+    transition: border 0.2s, background 0.2s;
     text-align: center;
-    letter-spacing: 3px;
+    letter-spacing: 1px;
   }
-  .login-card input:focus { border-color: var(--blue); }
+  .login-card input::placeholder { color: rgba(255,255,255,0.5); }
+  .login-card input:focus { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.14); }
   .login-card button {
     width: 100%;
     margin-top: 16px;
     padding: 14px;
-    background: var(--blue);
+    background: linear-gradient(135deg, var(--blue) 0%, var(--blue-light) 100%);
     color: white;
     border: none;
-    border-radius: 10px;
+    border-radius: 12px;
     font-size: 15px;
     font-weight: 700;
     font-family: 'Inter', sans-serif;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: filter 0.2s;
     letter-spacing: 1px;
+    box-shadow: 0 6px 20px rgba(26,63,204,0.4);
   }
-  .login-card button:hover { background: var(--blue-dark); }
+  .login-card button:hover { filter: brightness(1.1); }
   .login-error {
     margin-top: 12px;
-    color: var(--red);
+    color: #ff8a8a;
     font-size: 13px;
     font-weight: 500;
     min-height: 20px;
@@ -766,12 +783,69 @@
   .add-fixture-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; padding: 12px; background: #f8f9ff; border-radius: 10px; }
   .add-fixture-form select, .add-fixture-form input { padding: 7px 10px; border: 1.5px solid #d0d8ff; border-radius: 8px; font-size: 12px; font-family: Arial, sans-serif; }
   details.miclub-plantel summary { cursor: pointer; font-weight: 700; color: #1a3fcc; font-family: Arial, sans-serif; font-size: 14px; padding: 4px 0; }
+
+  /* ── Header de club (Mi Club) ── */
+  .club-hero {
+    padding: 22px 20px 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    text-align: center;
+  }
+  .club-hero-escudo {
+    width: 84px; height: 84px; object-fit: contain; border-radius: 18px;
+    background: white; padding: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  .club-hero-nombre {
+    font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 2px;
+    text-transform: uppercase; color: white;
+  }
+  .club-hero-logout {
+    position: absolute; top: 16px; right: 16px;
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+    color: white; border-radius: 8px; padding: 6px 12px; font-size: 12px;
+    cursor: pointer; font-family: Arial, sans-serif;
+  }
+
+  /* ── Barra inferior glassmorfismo (categorías + salir) ── */
+  .bottom-nav-wrap { position: relative; padding-bottom: 96px; min-height: 100vh; box-sizing: border-box; }
+  .bottom-nav {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+    display: flex; gap: 4px; align-items: center;
+    background: rgba(20,30,70,0.45);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 999px;
+    padding: 8px 10px;
+    box-shadow: 0 10px 32px rgba(0,0,0,0.35);
+    z-index: 150;
+    max-width: calc(100vw - 24px);
+    overflow-x: auto;
+  }
+  .bn-item {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: none; border: none; color: rgba(255,255,255,0.75);
+    padding: 8px 14px; border-radius: 999px; cursor: pointer;
+    font-family: Arial, sans-serif; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.3px; white-space: nowrap; transition: all 0.15s;
+  }
+  .bn-item .bn-icon { font-size: 17px; line-height: 1; }
+  .bn-item.active { background: rgba(255,255,255,0.22); color: white; }
+  .bn-item.bn-exit { color: #ffb0b0; }
+  .bn-item.bn-exit.active, .bn-item.bn-exit:hover { background: rgba(224,48,48,0.35); color: white; }
+
+  /* ── Posiciones: minimizada por defecto, expandible ── */
+  .pos-table .col-extra { display: none; }
+  .pos-table.expandida .col-extra { display: table-cell; }
+  .btn-expandir {
+    background: none; border: 1.5px solid #d0d8ff; color: #1a3fcc; border-radius: 20px;
+    padding: 5px 12px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: Arial, sans-serif;
+  }
 </style>
 </head>
 <body>
 
 <!-- INTRO -->
-<div id="intro-screen" style="position:fixed;inset:0;background:linear-gradient(160deg,#040d24 0%,#0d1730 45%,#162050 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;overflow:hidden;">
+<div id="intro-screen" class="hero-bg" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;overflow:hidden;">
   <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 55%,rgba(26,63,204,0.22) 0%,transparent 68%);pointer-events:none;"></div>
   <div id="intro-logo" style="opacity:0;transform:scale(0.85);transition:opacity 0.9s ease,transform 0.9s ease;">
     <img src="./logo2.png" alt="ACPF" style="width:260px;height:auto;">
@@ -834,7 +908,7 @@
 </div>
 
 <!-- LOGIN -->
-<div id="login-screen" style="display:none;">
+<div id="login-screen" class="hero-bg" style="display:none;">
   <div class="login-card">
     <div class="login-logo"><img src="./logo.png" alt="ACPF" style="width:200px;height:auto;object-fit:contain;"></div>
     <div class="login-sub">Asociación Civil Paceña de Fútbol</div>
@@ -848,58 +922,59 @@
 
 <!-- MI CLUB (delegados) -->
 <div id="miclub-screen" style="display:none;min-height:100vh;background:#f0f4ff;">
-  <div class="miclub-header2">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <img id="miclub-escudo" src="./logo2.png" alt="" style="height:32px;width:32px;object-fit:contain;border-radius:6px;background:white;">
-      <span style="color:white;font-family:Arial,sans-serif;font-weight:700;font-size:15px;" id="miclub-nombre">Mi Club</span>
+  <div class="bottom-nav-wrap">
+    <div class="club-hero" id="miclub-hero" style="position:relative;">
+      <button class="club-hero-logout" onclick="doLogout()">Cerrar sesión</button>
+      <img class="club-hero-escudo" id="miclub-escudo" src="./logo2.png" alt="">
+      <span class="club-hero-nombre" id="miclub-nombre">Mi Club</span>
     </div>
-    <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);border:none;color:white;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:Arial,sans-serif;">Cerrar sesión</button>
-  </div>
-  <div style="display:flex;overflow-x:auto;background:white;border-bottom:2px solid #e8ecff;padding:0 12px;">
-    <button class="ctab active" onclick="selectMiClubCat(this,'Primera')">Primera</button>
-    <button class="ctab" onclick="selectMiClubCat(this,'Reserva')">Reserva</button>
-    <button class="ctab" onclick="selectMiClubCat(this,'Sub-20')">Sub-20</button>
-    <button class="ctab" onclick="selectMiClubCat(this,'Cadetes')">Cadetes</button>
-  </div>
-  <div style="display:flex;gap:8px;padding:14px 16px 8px;background:#f0f4ff;overflow-x:auto;">
-    <button class="stab active" onclick="selectMiClubSec(this,'suspendidos')">🚫 Suspendidos</button>
-    <button class="stab" onclick="selectMiClubSec(this,'amarillas')">🟨 Amarillas</button>
-    <button class="stab" onclick="selectMiClubSec(this,'posiciones')">🏆 Posiciones</button>
-    <button class="stab" onclick="selectMiClubSec(this,'goleadores')">⚽ Goleadores</button>
-    <button class="stab" onclick="selectMiClubSec(this,'fixture')">📅 Fixture</button>
-    <button class="stab" onclick="selectMiClubSec(this,'plantel')">👥 Plantel</button>
-  </div>
-  <div id="miclub-content" style="padding:16px;">
-    <div class="no-data">Cargando...</div>
+    <div style="display:flex;gap:8px;padding:6px 16px 8px;background:#f0f4ff;overflow-x:auto;">
+      <button class="stab active" onclick="selectMiClubSec(this,'suspendidos')">🚫 Suspendidos</button>
+      <button class="stab" onclick="selectMiClubSec(this,'amarillas')">🟨 Amarillas</button>
+      <button class="stab" onclick="selectMiClubSec(this,'posiciones')">🏆 Posiciones</button>
+      <button class="stab" onclick="selectMiClubSec(this,'goleadores')">⚽ Goleadores</button>
+      <button class="stab" onclick="selectMiClubSec(this,'fixture')">📅 Fixture</button>
+      <button class="stab" onclick="selectMiClubSec(this,'plantel')">👥 Plantel</button>
+    </div>
+    <div id="miclub-content" style="padding:16px;">
+      <div class="no-data">Cargando...</div>
+    </div>
+    <nav class="bottom-nav" id="miclub-bottom-nav">
+      <button class="bn-item active" onclick="selectMiClubCat(this,'Primera')"><span class="bn-icon">🥇</span>Primera</button>
+      <button class="bn-item" onclick="selectMiClubCat(this,'Reserva')"><span class="bn-icon">🥈</span>Reserva</button>
+      <button class="bn-item" onclick="selectMiClubCat(this,'Sub-20')"><span class="bn-icon">🧑</span>Sub-20</button>
+      <button class="bn-item" onclick="selectMiClubCat(this,'Cadetes')"><span class="bn-icon">🧒</span>Cadetes</button>
+      <button class="bn-item bn-exit" onclick="doLogout()"><span class="bn-icon">🚪</span>Salir</button>
+    </nav>
   </div>
 </div>
 
 <!-- ADMIN HOME -->
 <div id="admin-home" style="display:none;min-height:100vh;background:#f0f4ff;">
-  <div class="admin-header">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <img src="./logo2.png" alt="ACPF" style="height:32px;width:auto;filter:brightness(0) invert(1);">
-      <span style="color:white;font-family:Arial,sans-serif;font-weight:700;font-size:15px;">Panel ACPF</span>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;">
+  <div class="bottom-nav-wrap">
+    <div class="admin-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <img src="./logo2.png" alt="ACPF" style="height:32px;width:auto;filter:brightness(0) invert(1);">
+        <span style="color:white;font-family:Arial,sans-serif;font-weight:700;font-size:15px;">Panel ACPF</span>
+      </div>
       <button class="btn-nueva-planilla" onclick="mostrarWizard()">+ Cargar Planilla</button>
-      <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);border:none;color:white;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;font-family:Arial,sans-serif;">Cerrar sesión</button>
     </div>
-  </div>
-  <div style="display:flex;overflow-x:auto;background:white;border-bottom:2px solid #e8ecff;padding:0 12px;">
-    <button class="ctab active" onclick="selectAdminCat(this,'Primera')">Primera</button>
-    <button class="ctab" onclick="selectAdminCat(this,'Reserva')">Reserva</button>
-    <button class="ctab" onclick="selectAdminCat(this,'Sub-20')">Sub-20</button>
-    <button class="ctab" onclick="selectAdminCat(this,'Cadetes')">Cadetes</button>
-  </div>
-  <div style="display:flex;gap:8px;padding:14px 16px 8px;background:#f0f4ff;overflow-x:auto;">
-    <button class="stab active" onclick="selectAdminSec(this,'posiciones')">🏆 Posiciones</button>
-    <button class="stab" onclick="selectAdminSec(this,'goleadores')">⚽ Goleadores</button>
-    <button class="stab" onclick="selectAdminSec(this,'fixture')">📅 Fixture</button>
-    <button class="stab" onclick="selectAdminSec(this,'sanciones')">🟨🟥 Tarjetas / Suspensiones</button>
-  </div>
-  <div id="admin-content" style="padding:16px;">
-    <div class="no-data">Cargando...</div>
+    <div style="display:flex;gap:8px;padding:14px 16px 8px;background:#f0f4ff;overflow-x:auto;">
+      <button class="stab active" onclick="selectAdminSec(this,'posiciones')">🏆 Posiciones</button>
+      <button class="stab" onclick="selectAdminSec(this,'goleadores')">⚽ Goleadores</button>
+      <button class="stab" onclick="selectAdminSec(this,'fixture')">📅 Fixture</button>
+      <button class="stab" onclick="selectAdminSec(this,'sanciones')">🟨🟥 Tarjetas / Suspensiones</button>
+    </div>
+    <div id="admin-content" style="padding:16px;">
+      <div class="no-data">Cargando...</div>
+    </div>
+    <nav class="bottom-nav">
+      <button class="bn-item active" onclick="selectAdminCat(this,'Primera')"><span class="bn-icon">🥇</span>Primera</button>
+      <button class="bn-item" onclick="selectAdminCat(this,'Reserva')"><span class="bn-icon">🥈</span>Reserva</button>
+      <button class="bn-item" onclick="selectAdminCat(this,'Sub-20')"><span class="bn-icon">🧑</span>Sub-20</button>
+      <button class="bn-item" onclick="selectAdminCat(this,'Cadetes')"><span class="bn-icon">🧒</span>Cadetes</button>
+      <button class="bn-item bn-exit" onclick="doLogout()"><span class="bn-icon">🚪</span>Salir</button>
+    </nav>
   </div>
 </div>
 
@@ -1168,17 +1243,19 @@ async function doLogin() {
 
   if (perfil.rol === "admin") {
     document.getElementById("admin-home").style.display = "block";
-    selectAdminCat(document.querySelector("#admin-home .ctab"), "Primera");
+    selectAdminCat(document.querySelector("#admin-home .bn-item"), "Primera");
   } else {
     const club = clubesCache[perfil.club_id] || "Mi Club";
     document.getElementById("miclub-nombre").textContent = club;
     const v = CLUBES_VISUAL[club];
     if (v) document.getElementById("miclub-escudo").src = v.logo;
     const color = clubColor(club);
-    document.querySelector("#miclub-screen .miclub-header2").style.background =
-      `linear-gradient(135deg, ${color} 0%, #0d1730 100%)`;
+    const gradiente = `linear-gradient(135deg, ${color} 0%, #0d1730 100%)`;
+    document.getElementById("miclub-hero").style.background = gradiente;
+    document.getElementById("miclub-bottom-nav").style.background =
+      `linear-gradient(135deg, ${color}cc 0%, rgba(13,23,48,0.7) 100%)`;
     document.getElementById("miclub-screen").style.display = "block";
-    selectMiClubCat(document.querySelector("#miclub-screen .ctab"), "Primera");
+    selectMiClubCat(document.querySelector("#miclub-screen .bn-item"), "Primera");
   }
 }
 
@@ -1900,17 +1977,20 @@ function renderPosiciones(pos, cat) {
     .sort((a, b) => b.pts - a.pts || b.dg - a.dg || b.gf - a.gf || a.club.localeCompare(b.club, "es"));
   return `
 <div class="cons-card">
-  <h3>🏆 Tabla de Posiciones — ${esc(cat)}</h3>
-  <div class="table-scroll"><table class="cons-table" style="min-width:480px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:2px solid #e8ecff;padding-bottom:8px;">
+    <h3 style="margin:0;border:none;padding:0;">🏆 Tabla de Posiciones — ${esc(cat)}</h3>
+    <button class="btn-expandir" onclick="const t=this.closest('.cons-card').querySelector('table'); t.classList.toggle('expandida'); this.textContent = t.classList.contains('expandida') ? '▲ Menos' : '▼ Más detalle';">▼ Más detalle</button>
+  </div>
+  <div class="table-scroll"><table class="cons-table pos-table" style="min-width:420px;">
     <thead><tr>
       <th>#</th><th>Club</th>
       <th title="Puntos">PTS</th>
-      <th title="Partidos jugados">PJ</th>
+      <th class="col-extra" title="Partidos jugados">PJ</th>
       <th title="Ganados">G</th>
-      <th title="Empatados">E</th>
+      <th class="col-extra" title="Empatados">E</th>
       <th title="Perdidos">P</th>
-      <th title="Goles a favor">GF</th>
-      <th title="Goles en contra">GC</th>
+      <th class="col-extra" title="Goles a favor">GF</th>
+      <th class="col-extra" title="Goles en contra">GC</th>
       <th title="Diferencia de goles">DG</th>
     </tr></thead>
     <tbody>
@@ -1919,12 +1999,12 @@ function renderPosiciones(pos, cat) {
         <td class="rank">${i+1}</td>
         <td style="font-weight:600">${clubBadge(r.club)}${esc(r.club)}</td>
         <td class="pos-pts">${r.pts}</td>
-        <td>${r.pj}</td>
+        <td class="col-extra">${r.pj}</td>
         <td>${r.g}</td>
-        <td>${r.e}</td>
+        <td class="col-extra">${r.e}</td>
         <td>${r.p}</td>
-        <td>${r.gf}</td>
-        <td>${r.gc}</td>
+        <td class="col-extra">${r.gf}</td>
+        <td class="col-extra">${r.gc}</td>
         <td style="color:${r.dg>0?'#1a7a1a':r.dg<0?'#e03030':'#555'};font-weight:600">${r.dg>0?'+':''}${r.dg}</td>
       </tr>`).join("")}
     </tbody>
@@ -1981,7 +2061,7 @@ function renderSuspendidos(susp, cat) {
 // ══════════════════════════════════
 let miClubCatActual = "Primera";
 function selectMiClubCat(btn, cat) {
-  document.querySelectorAll("#miclub-screen .ctab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll("#miclub-screen .bn-item:not(.bn-exit)").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   miClubCatActual = cat;
   renderMiClub();
@@ -2102,20 +2182,22 @@ async function eliminarFixture(id) {
 // ══════════════════════════════════
 // SANCIONES / TARJETAS (solo admin, editable)
 // ══════════════════════════════════
-async function renderSanciones(cat, editable) {
+async function renderSanciones(editable) {
+  // Sin filtro de categoría: una sanción bloquea al jugador en todas las
+  // categorías, así que se ven todas juntas para no perderse ninguna.
   const { data, error } = await sb.from("sanciones")
-    .select("id,tipo,fecha_inicio,fechas_a_cumplir,estado,club_id,jugadores(nombre)")
-    .eq("categoria", cat).order("estado").order("fecha_inicio", { ascending: false });
+    .select("id,tipo,categoria,fecha_inicio,fechas_a_cumplir,estado,club_id,jugadores(nombre)")
+    .order("estado").order("fecha_inicio", { ascending: false });
   if (error) { console.error(error); return `<div class="no-data">Error al cargar sanciones.</div>`; }
   const rows = data || [];
   if (!rows.length) {
-    return `<div class="cons-card"><h3>🟨🟥 Tarjetas / Suspensiones — ${esc(cat)}</h3><div class="no-data">Sin sanciones registradas en ${esc(cat)}.</div></div>`;
+    return `<div class="cons-card"><h3>🟨🟥 Tarjetas / Suspensiones — todas las categorías</h3><div class="no-data">Sin sanciones registradas.</div></div>`;
   }
   return `
   <div class="cons-card">
-    <h3>🟨🟥 Tarjetas / Suspensiones — ${esc(cat)}</h3>
-    <div class="table-scroll"><table class="cons-table" style="min-width:560px;">
-      <thead><tr><th>Jugador</th><th>Club</th><th>Tipo</th><th style="text-align:center;">Desde</th><th style="text-align:center;">Fechas</th><th>Estado</th>${editable ? "<th></th>" : ""}</tr></thead>
+    <h3>🟨🟥 Tarjetas / Suspensiones — todas las categorías</h3>
+    <div class="table-scroll"><table class="cons-table" style="min-width:620px;">
+      <thead><tr><th>Jugador</th><th>Club</th><th>Categoría</th><th>Tipo</th><th style="text-align:center;">Desde</th><th style="text-align:center;">Fechas</th><th>Estado</th>${editable ? "<th></th>" : ""}</tr></thead>
       <tbody>
       ${rows.map(r => {
         const club = clubesCache[r.club_id] || "?";
@@ -2123,6 +2205,7 @@ async function renderSanciones(cat, editable) {
           return `<tr>
             <td style="font-weight:600">${esc(r.jugadores?.nombre || "")}</td>
             <td>${clubBadge(club)}${esc(club)}</td>
+            <td>${esc(r.categoria)}</td>
             <td>${esc(r.tipo)}</td>
             <td style="text-align:center;">Fecha ${r.fecha_inicio}</td>
             <td style="text-align:center;">${r.fechas_a_cumplir}</td>
@@ -2132,6 +2215,7 @@ async function renderSanciones(cat, editable) {
         return `<tr class="edit-row">
           <td style="font-weight:600">${esc(r.jugadores?.nombre || "")}</td>
           <td>${clubBadge(club)}${esc(club)}</td>
+          <td>${esc(r.categoria)}</td>
           <td>${esc(r.tipo)}</td>
           <td style="text-align:center;">Fecha ${r.fecha_inicio}</td>
           <td style="text-align:center;"><input type="number" id="sc-fc-${r.id}" value="${r.fechas_a_cumplir}" min="1" max="10"></td>
@@ -2172,7 +2256,7 @@ async function eliminarSancion(id) {
 let adminCatActual = "Primera";
 let adminSecActual = "posiciones";
 function selectAdminCat(btn, cat) {
-  document.querySelectorAll("#admin-home .ctab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll("#admin-home .bn-item:not(.bn-exit)").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   adminCatActual = cat;
   renderAdminContent();
@@ -2199,7 +2283,7 @@ async function renderAdminContent() {
   } else if (adminSecActual === "fixture") {
     cont.innerHTML = await renderFixture(cat, true);
   } else if (adminSecActual === "sanciones") {
-    cont.innerHTML = await renderSanciones(cat, true);
+    cont.innerHTML = await renderSanciones(true);
   }
 }
 
