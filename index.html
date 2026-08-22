@@ -748,6 +748,24 @@
   .cons-card h3 { margin: 0 0 12px; font-size: 14px; color: #1a3fcc;
                   font-family: Arial, sans-serif; border-bottom: 2px solid #e8ecff; padding-bottom: 8px; }
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
+
+  .club-badge { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
+                margin-right: 7px; border-radius: 4px; background: white; }
+  .admin-header, .miclub-header2 {
+    background: linear-gradient(135deg,#1a3fcc,#0d1730); padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .btn-nueva-planilla {
+    background: var(--yellow); color: #1a1f3a; border: none; border-radius: 8px;
+    padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: Arial, sans-serif;
+  }
+  .edit-row input[type="number"] { width: 46px; padding: 4px 6px; border: 1.5px solid #d0d8ff; border-radius: 6px; text-align: center; }
+  .edit-row select { padding: 4px 6px; border: 1.5px solid #d0d8ff; border-radius: 6px; font-size: 12px; }
+  .btn-mini { background: #1a3fcc; color: white; border: none; border-radius: 6px; padding: 5px 10px; font-size: 11px; cursor: pointer; font-weight: 700; }
+  .btn-mini.danger { background: var(--red); }
+  .add-fixture-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; padding: 12px; background: #f8f9ff; border-radius: 10px; }
+  .add-fixture-form select, .add-fixture-form input { padding: 7px 10px; border: 1.5px solid #d0d8ff; border-radius: 8px; font-size: 12px; font-family: Arial, sans-serif; }
+  details.miclub-plantel summary { cursor: pointer; font-weight: 700; color: #1a3fcc; font-family: Arial, sans-serif; font-size: 14px; padding: 4px 0; }
 </style>
 </head>
 <body>
@@ -830,9 +848,9 @@
 
 <!-- MI CLUB (delegados) -->
 <div id="miclub-screen" style="display:none;min-height:100vh;background:#f0f4ff;">
-  <div style="background:linear-gradient(135deg,#1a3fcc,#0d1730);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+  <div class="miclub-header2">
     <div style="display:flex;align-items:center;gap:12px;">
-      <img src="./logo2.png" alt="ACPF" style="height:32px;width:auto;filter:brightness(0) invert(1);">
+      <img id="miclub-escudo" src="./logo2.png" alt="" style="height:32px;width:32px;object-fit:contain;border-radius:6px;background:white;">
       <span style="color:white;font-family:Arial,sans-serif;font-weight:700;font-size:15px;" id="miclub-nombre">Mi Club</span>
     </div>
     <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);border:none;color:white;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:Arial,sans-serif;">Cerrar sesión</button>
@@ -843,7 +861,44 @@
     <button class="ctab" onclick="selectMiClubCat(this,'Sub-20')">Sub-20</button>
     <button class="ctab" onclick="selectMiClubCat(this,'Cadetes')">Cadetes</button>
   </div>
+  <div style="display:flex;gap:8px;padding:14px 16px 8px;background:#f0f4ff;overflow-x:auto;">
+    <button class="stab active" onclick="selectMiClubSec(this,'suspendidos')">🚫 Suspendidos</button>
+    <button class="stab" onclick="selectMiClubSec(this,'amarillas')">🟨 Amarillas</button>
+    <button class="stab" onclick="selectMiClubSec(this,'posiciones')">🏆 Posiciones</button>
+    <button class="stab" onclick="selectMiClubSec(this,'goleadores')">⚽ Goleadores</button>
+    <button class="stab" onclick="selectMiClubSec(this,'fixture')">📅 Fixture</button>
+    <button class="stab" onclick="selectMiClubSec(this,'plantel')">👥 Plantel</button>
+  </div>
   <div id="miclub-content" style="padding:16px;">
+    <div class="no-data">Cargando...</div>
+  </div>
+</div>
+
+<!-- ADMIN HOME -->
+<div id="admin-home" style="display:none;min-height:100vh;background:#f0f4ff;">
+  <div class="admin-header">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <img src="./logo2.png" alt="ACPF" style="height:32px;width:auto;filter:brightness(0) invert(1);">
+      <span style="color:white;font-family:Arial,sans-serif;font-weight:700;font-size:15px;">Panel ACPF</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn-nueva-planilla" onclick="mostrarWizard()">+ Cargar Planilla</button>
+      <button onclick="doLogout()" style="background:rgba(255,255,255,0.15);border:none;color:white;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;font-family:Arial,sans-serif;">Cerrar sesión</button>
+    </div>
+  </div>
+  <div style="display:flex;overflow-x:auto;background:white;border-bottom:2px solid #e8ecff;padding:0 12px;">
+    <button class="ctab active" onclick="selectAdminCat(this,'Primera')">Primera</button>
+    <button class="ctab" onclick="selectAdminCat(this,'Reserva')">Reserva</button>
+    <button class="ctab" onclick="selectAdminCat(this,'Sub-20')">Sub-20</button>
+    <button class="ctab" onclick="selectAdminCat(this,'Cadetes')">Cadetes</button>
+  </div>
+  <div style="display:flex;gap:8px;padding:14px 16px 8px;background:#f0f4ff;overflow-x:auto;">
+    <button class="stab active" onclick="selectAdminSec(this,'posiciones')">🏆 Posiciones</button>
+    <button class="stab" onclick="selectAdminSec(this,'goleadores')">⚽ Goleadores</button>
+    <button class="stab" onclick="selectAdminSec(this,'fixture')">📅 Fixture</button>
+    <button class="stab" onclick="selectAdminSec(this,'sanciones')">🟨🟥 Tarjetas / Suspensiones</button>
+  </div>
+  <div id="admin-content" style="padding:16px;">
     <div class="no-data">Cargando...</div>
   </div>
 </div>
@@ -851,7 +906,10 @@
 <!-- APP -->
 <div id="app">
   <header>
-    <div class="header-logo"><img src="./logo2.png" alt="ACPF" style="height:36px;width:auto;object-fit:contain;filter:brightness(0) invert(1);"></div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="header-logo"><img src="./logo2.png" alt="ACPF" style="height:36px;width:auto;object-fit:contain;filter:brightness(0) invert(1);"></div>
+      <button onclick="volverAdminHome()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:Inter,sans-serif;">← Panel</button>
+    </div>
     <button class="logout-btn" onclick="doLogout()">Cerrar sesión</button>
   </header>
 
@@ -1019,6 +1077,27 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const CATEGORIAS = ["Cadetes", "Sub-20", "Reserva", "Primera"];
+
+// Escudos y color dominante de cada club (extraído de los PNG que subieron).
+const CLUBES_VISUAL = {
+  "Anahí":          { logo: "./anahi.png",          color: "#2030f0" },
+  "Camba Porá":     { logo: "./camba_pora.png",      color: "#006000" },
+  "Coe Mbota":      { logo: "./coe_mbota.png",       color: "#209000" },
+  "Cruz Quiroz":    { logo: "./cruz_quiroz.png",     color: "#0070b0" },
+  "Once Corazones": { logo: "./once_corazones.png",  color: "#103070" },
+  "San Antonio":    { logo: "./san_antonio.png",     color: "#e02020" },
+  "San Isidro":     { logo: "./san_isidro.png",      color: "#e07000" },
+  "Sol Naciente":   { logo: "./sol_naciente.png",     color: "#b00000" }
+};
+function clubBadge(nombre) {
+  const v = CLUBES_VISUAL[nombre];
+  const src = v ? v.logo : "./logo2.png";
+  const color = clubColor(nombre);
+  return `<img class="club-badge" src="${src}" alt="" style="border:2px solid ${color};" onerror="this.style.display='none'">`;
+}
+function clubColor(nombre) {
+  return (CLUBES_VISUAL[nombre] && CLUBES_VISUAL[nombre].color) || "#1a3fcc";
+}
 const TOTAL_FECHAS = 14;
 
 // Escape HTML — evita XSS al insertar nombres/observaciones en innerHTML
@@ -1088,13 +1167,31 @@ async function doLogin() {
   document.getElementById("login-screen").style.display = "none";
 
   if (perfil.rol === "admin") {
-    document.getElementById("app").style.display = "block";
-    initApp();
+    document.getElementById("admin-home").style.display = "block";
+    selectAdminCat(document.querySelector("#admin-home .ctab"), "Primera");
   } else {
-    document.getElementById("miclub-nombre").textContent = clubesCache[perfil.club_id] || "Mi Club";
+    const club = clubesCache[perfil.club_id] || "Mi Club";
+    document.getElementById("miclub-nombre").textContent = club;
+    const v = CLUBES_VISUAL[club];
+    if (v) document.getElementById("miclub-escudo").src = v.logo;
+    const color = clubColor(club);
+    document.querySelector("#miclub-screen .miclub-header2").style.background =
+      `linear-gradient(135deg, ${color} 0%, #0d1730 100%)`;
     document.getElementById("miclub-screen").style.display = "block";
     selectMiClubCat(document.querySelector("#miclub-screen .ctab"), "Primera");
   }
+}
+
+// Admin: entrar/salir del asistente de carga de planilla
+function mostrarWizard() {
+  document.getElementById("admin-home").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  initApp();
+}
+function volverAdminHome() {
+  document.getElementById("app").style.display = "none";
+  document.getElementById("admin-home").style.display = "block";
+  renderAdminContent();
 }
 
 async function doLogout() {
@@ -1104,6 +1201,7 @@ async function doLogout() {
   document.getElementById("login-screen").style.display = "flex";
   document.getElementById("app").style.display = "none";
   document.getElementById("miclub-screen").style.display = "none";
+  document.getElementById("admin-home").style.display = "none";
   document.getElementById("pwd-input").value = "";
   document.getElementById("email-input").value = "";
   document.getElementById("login-error").textContent = "";
@@ -1138,6 +1236,7 @@ async function initApp() {
       sel.appendChild(o);
     });
   });
+  goToStep1();
 }
 
 function onCategoriaChange() { onClubChange(); }
@@ -1227,9 +1326,12 @@ function setDot(active) {
 // ══════════════════════════════════
 function buildMatchHeader(localId, visitanteId, cat) {
   const fechaNum = document.getElementById("fecha-num").value;
-  document.getElementById("mh-local").textContent = clubesCache[localId];
-  document.getElementById("mh-visitante").textContent = clubesCache[visitanteId];
+  const nombreLocal = clubesCache[localId], nombreVisitante = clubesCache[visitanteId];
+  document.getElementById("mh-local").innerHTML = clubBadge(nombreLocal) + esc(nombreLocal);
+  document.getElementById("mh-visitante").innerHTML = clubBadge(nombreVisitante) + esc(nombreVisitante);
   document.getElementById("mh-info").textContent = `Fecha ${fechaNum}  ·  ${cat}`;
+  document.getElementById("match-header").style.background =
+    `linear-gradient(135deg, ${clubColor(nombreLocal)} 0%, ${clubColor(nombreVisitante)} 100%)`;
   document.getElementById("score-local").textContent = "0";
   document.getElementById("score-local").dataset.extra = "0";
   document.getElementById("score-visitante").textContent = "0";
@@ -1815,7 +1917,7 @@ function renderPosiciones(pos, cat) {
       ${tabla.map((r, i) => `
       <tr>
         <td class="rank">${i+1}</td>
-        <td style="font-weight:600">${esc(r.club)}</td>
+        <td style="font-weight:600">${clubBadge(r.club)}${esc(r.club)}</td>
         <td class="pos-pts">${r.pts}</td>
         <td>${r.pj}</td>
         <td>${r.g}</td>
@@ -1844,7 +1946,7 @@ function renderGoleadores(gol, cat) {
       <tr>
         <td class="rank">${i+1}</td>
         <td style="font-weight:600">${esc(r.jugador)}</td>
-        <td>${esc(r.club)}</td>
+        <td>${clubBadge(r.club)}${esc(r.club)}</td>
         <td style="font-weight:700;color:#1a3fcc;text-align:center;">${r.goles}</td>
       </tr>`).join("")}
     </tbody>
@@ -1865,7 +1967,7 @@ function renderSuspendidos(susp, cat) {
       ${susp.map(r => `
       <tr>
         <td style="font-weight:600">${esc(r.jugador)}</td>
-        <td>${esc(r.club)}</td>
+        <td>${clubBadge(r.club)}${esc(r.club)}</td>
         <td>${esc(r.tipo)}</td>
         <td style="font-weight:700;color:#e03030;text-align:center;">Fecha ${r.fecha_fin}</td>
       </tr>`).join("")}
@@ -1884,54 +1986,286 @@ function selectMiClubCat(btn, cat) {
   miClubCatActual = cat;
   renderMiClub();
 }
+function selectMiClubSec(btn, sec) {
+  document.querySelectorAll("#miclub-screen .stab").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  miClubSecActual = sec;
+  renderMiClub();
+}
+
+// ══════════════════════════════════
+// FIXTURE (compartido: admin editable / delegado solo lectura)
+// ══════════════════════════════════
+async function renderFixture(cat, editable) {
+  const { data, error } = await sb.from("fixture").select("*").eq("categoria", cat).order("fecha_nro");
+  if (error) { console.error(error); return `<div class="no-data">Error al cargar el fixture.</div>`; }
+  const rows = data || [];
+
+  let html = `<div class="cons-card"><h3>📅 Fixture — ${esc(cat)}</h3>`;
+
+  if (editable) {
+    const nombresOrdenados = Object.keys(clubesPorNombre).sort((a, b) => a.localeCompare(b, "es"));
+    const opciones = nombresOrdenados.map(n => `<option value="${clubesPorNombre[n]}">${esc(n)}</option>`).join("");
+    html += `
+    <div class="add-fixture-form">
+      <input type="number" id="nf-fecha" placeholder="Fecha #" min="1" max="${TOTAL_FECHAS}" style="width:80px;">
+      <select id="nf-local"><option value="">Local...</option>${opciones}</select>
+      <span style="font-weight:700;color:#888;">vs</span>
+      <select id="nf-visitante"><option value="">Visitante...</option>${opciones}</select>
+      <button class="btn-mini" onclick="agregarFixture('${cat}')">+ Agregar</button>
+    </div>`;
+  }
+
+  if (!rows.length) {
+    html += `<div class="no-data">Sin partidos programados en ${esc(cat)} todavía.</div></div>`;
+    return html;
+  }
+
+  html += `<div class="table-scroll"><table class="cons-table" style="min-width:520px;">
+    <thead><tr><th>Fecha</th><th>Local</th><th style="text-align:center;">Resultado</th><th>Visitante</th><th>Estado</th>${editable ? "<th></th>" : ""}</tr></thead>
+    <tbody>
+    ${rows.map(r => {
+      const localNombre = clubesCache[r.club_local_id] || "?";
+      const visNombre = clubesCache[r.club_visitante_id] || "?";
+      if (!editable) {
+        return `<tr>
+          <td>Fecha ${r.fecha_nro}</td>
+          <td>${clubBadge(localNombre)}${esc(localNombre)}</td>
+          <td style="text-align:center;font-weight:700;">${r.goles_local ?? "–"} - ${r.goles_visitante ?? "–"}</td>
+          <td>${clubBadge(visNombre)}${esc(visNombre)}</td>
+          <td>${r.estado === "Jugado" ? "✅ Jugado" : "⏳ Pendiente"}</td>
+        </tr>`;
+      }
+      return `<tr class="edit-row">
+        <td>Fecha ${r.fecha_nro}</td>
+        <td>${clubBadge(localNombre)}${esc(localNombre)}</td>
+        <td style="text-align:center;white-space:nowrap;">
+          <input type="number" id="fx-gl-${r.id}" value="${r.goles_local ?? ""}" min="0"> - <input type="number" id="fx-gv-${r.id}" value="${r.goles_visitante ?? ""}" min="0">
+        </td>
+        <td>${clubBadge(visNombre)}${esc(visNombre)}</td>
+        <td>
+          <select id="fx-est-${r.id}">
+            <option value="Pendiente" ${r.estado === "Pendiente" ? "selected" : ""}>Pendiente</option>
+            <option value="Jugado" ${r.estado === "Jugado" ? "selected" : ""}>Jugado</option>
+          </select>
+        </td>
+        <td style="white-space:nowrap;">
+          <button class="btn-mini" onclick="guardarFixtureRow('${r.id}')">Guardar</button>
+          <button class="btn-mini danger" onclick="eliminarFixture('${r.id}')">✕</button>
+        </td>
+      </tr>`;
+    }).join("")}
+    </tbody>
+  </table></div></div>`;
+  return html;
+}
+
+async function agregarFixture(cat) {
+  const fecha = document.getElementById("nf-fecha").value;
+  const local = document.getElementById("nf-local").value;
+  const visitante = document.getElementById("nf-visitante").value;
+  if (!fecha || !local || !visitante) { showToast("Completá fecha y ambos clubes", "error"); return; }
+  if (local === visitante) { showToast("Los clubes no pueden ser el mismo", "error"); return; }
+
+  const { error } = await sb.from("fixture").insert({
+    fecha_nro: parseInt(fecha), categoria: cat, club_local_id: local, club_visitante_id: visitante
+  });
+  if (error) {
+    showToast(error.message.includes("duplicate") ? "Ese partido ya está en el fixture" : "Error: " + error.message, "error");
+    return;
+  }
+  showToast("Partido agregado al fixture", "success");
+  renderAdminContent();
+}
+
+async function guardarFixtureRow(id) {
+  const golesL = document.getElementById(`fx-gl-${id}`).value;
+  const golesV = document.getElementById(`fx-gv-${id}`).value;
+  const estado = document.getElementById(`fx-est-${id}`).value;
+  const { error } = await sb.from("fixture").update({
+    goles_local: golesL === "" ? null : parseInt(golesL),
+    goles_visitante: golesV === "" ? null : parseInt(golesV),
+    estado
+  }).eq("id", id);
+  if (error) { showToast("Error: " + error.message, "error"); return; }
+  showToast("Fixture actualizado", "success");
+  renderAdminContent();
+}
+
+async function eliminarFixture(id) {
+  const { error } = await sb.from("fixture").delete().eq("id", id);
+  if (error) { showToast("Error: " + error.message, "error"); return; }
+  showToast("Partido eliminado del fixture", "success");
+  renderAdminContent();
+}
+
+// ══════════════════════════════════
+// SANCIONES / TARJETAS (solo admin, editable)
+// ══════════════════════════════════
+async function renderSanciones(cat, editable) {
+  const { data, error } = await sb.from("sanciones")
+    .select("id,tipo,fecha_inicio,fechas_a_cumplir,estado,club_id,jugadores(nombre)")
+    .eq("categoria", cat).order("estado").order("fecha_inicio", { ascending: false });
+  if (error) { console.error(error); return `<div class="no-data">Error al cargar sanciones.</div>`; }
+  const rows = data || [];
+  if (!rows.length) {
+    return `<div class="cons-card"><h3>🟨🟥 Tarjetas / Suspensiones — ${esc(cat)}</h3><div class="no-data">Sin sanciones registradas en ${esc(cat)}.</div></div>`;
+  }
+  return `
+  <div class="cons-card">
+    <h3>🟨🟥 Tarjetas / Suspensiones — ${esc(cat)}</h3>
+    <div class="table-scroll"><table class="cons-table" style="min-width:560px;">
+      <thead><tr><th>Jugador</th><th>Club</th><th>Tipo</th><th style="text-align:center;">Desde</th><th style="text-align:center;">Fechas</th><th>Estado</th>${editable ? "<th></th>" : ""}</tr></thead>
+      <tbody>
+      ${rows.map(r => {
+        const club = clubesCache[r.club_id] || "?";
+        if (!editable) {
+          return `<tr>
+            <td style="font-weight:600">${esc(r.jugadores?.nombre || "")}</td>
+            <td>${clubBadge(club)}${esc(club)}</td>
+            <td>${esc(r.tipo)}</td>
+            <td style="text-align:center;">Fecha ${r.fecha_inicio}</td>
+            <td style="text-align:center;">${r.fechas_a_cumplir}</td>
+            <td>${r.estado === "Vigente" ? "🚫 Vigente" : "✅ Cumplida"}</td>
+          </tr>`;
+        }
+        return `<tr class="edit-row">
+          <td style="font-weight:600">${esc(r.jugadores?.nombre || "")}</td>
+          <td>${clubBadge(club)}${esc(club)}</td>
+          <td>${esc(r.tipo)}</td>
+          <td style="text-align:center;">Fecha ${r.fecha_inicio}</td>
+          <td style="text-align:center;"><input type="number" id="sc-fc-${r.id}" value="${r.fechas_a_cumplir}" min="1" max="10"></td>
+          <td><select id="sc-est-${r.id}">
+            <option value="Vigente" ${r.estado === "Vigente" ? "selected" : ""}>Vigente</option>
+            <option value="Cumplida" ${r.estado === "Cumplida" ? "selected" : ""}>Cumplida</option>
+          </select></td>
+          <td style="white-space:nowrap;">
+            <button class="btn-mini" onclick="guardarSancion('${r.id}')">Guardar</button>
+            <button class="btn-mini danger" onclick="eliminarSancion('${r.id}')">✕</button>
+          </td>
+        </tr>`;
+      }).join("")}
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+async function guardarSancion(id) {
+  const estado = document.getElementById(`sc-est-${id}`).value;
+  const fechas = parseInt(document.getElementById(`sc-fc-${id}`).value || 1);
+  const { error } = await sb.from("sanciones").update({ estado, fechas_a_cumplir: fechas }).eq("id", id);
+  if (error) { showToast("Error: " + error.message, "error"); return; }
+  showToast("Sanción actualizada", "success");
+  renderAdminContent();
+}
+
+async function eliminarSancion(id) {
+  const { error } = await sb.from("sanciones").delete().eq("id", id);
+  if (error) { showToast("Error: " + error.message, "error"); return; }
+  showToast("Sanción eliminada", "success");
+  renderAdminContent();
+}
+
+// ══════════════════════════════════
+// PANEL ADMIN
+// ══════════════════════════════════
+let adminCatActual = "Primera";
+let adminSecActual = "posiciones";
+function selectAdminCat(btn, cat) {
+  document.querySelectorAll("#admin-home .ctab").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  adminCatActual = cat;
+  renderAdminContent();
+}
+function selectAdminSec(btn, sec) {
+  document.querySelectorAll("#admin-home .stab").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  adminSecActual = sec;
+  renderAdminContent();
+}
+
+async function renderAdminContent() {
+  const cont = document.getElementById("admin-content");
+  if (!cont) return;
+  cont.innerHTML = '<div class="no-data">Cargando...</div>';
+  const cat = adminCatActual;
+
+  if (adminSecActual === "posiciones") {
+    const { data, error } = await sb.from("vista_posiciones").select("*").eq("categoria", cat);
+    cont.innerHTML = error ? `<div class="no-data">Error al cargar datos.</div>` : renderPosiciones(data || [], cat);
+  } else if (adminSecActual === "goleadores") {
+    const { data, error } = await sb.from("vista_goleadores").select("*").eq("categoria", cat).order("goles", { ascending: false }).limit(20);
+    cont.innerHTML = error ? `<div class="no-data">Error al cargar datos.</div>` : renderGoleadores(data || [], cat);
+  } else if (adminSecActual === "fixture") {
+    cont.innerHTML = await renderFixture(cat, true);
+  } else if (adminSecActual === "sanciones") {
+    cont.innerHTML = await renderSanciones(cat, true);
+  }
+}
+
+// ══════════════════════════════════
+// MI CLUB (delegados — solo lectura)
+// ══════════════════════════════════
+let miClubSecActual = "suspendidos";
 
 async function renderMiClub() {
   const cont = document.getElementById("miclub-content");
   cont.innerHTML = '<div class="no-data">Cargando...</div>';
   const clubId = currentPerfil.club_id;
   const cat = miClubCatActual;
+  const sec = miClubSecActual;
 
-  const [plantelRes, amarillasRes, suspRes] = await Promise.all([
-    sb.from("jugadores").select("nombre").eq("club_id", clubId).eq("categoria", cat).eq("activo", true).order("nombre"),
-    sb.from("acumulado_amarillas").select("nombre,total,en_suspension").eq("club_id", clubId).order("total", { ascending: false }),
-    sb.from("sanciones").select("tipo,fecha_inicio,fechas_a_cumplir,jugadores(nombre)").eq("club_id", clubId).eq("categoria", cat).eq("estado", "Vigente")
-  ]);
-
-  const plantel   = plantelRes.data || [];
-  const amarillas = (amarillasRes.data || []).filter(a => a.total > 0 || a.en_suspension);
-  const susp      = (suspRes.data || []).map(s => ({
-    jugador: s.jugadores?.nombre || "", tipo: s.tipo, fechaFin: s.fecha_inicio + s.fechas_a_cumplir - 1
-  }));
-
-  cont.innerHTML = `
-    <div class="cons-card">
-      <h3>🚫 Suspendidos vigentes — ${esc(cat)}</h3>
-      ${susp.length ? `
-      <table class="cons-table" style="width:100%;">
-        <thead><tr><th>Jugador</th><th style="width:60px;">Tipo</th><th style="width:72px;text-align:center;">Hasta</th></tr></thead>
-        <tbody>${susp.map(r => `<tr><td style="font-weight:600">${esc(r.jugador)}</td><td>${esc(r.tipo)}</td>
-          <td style="font-weight:700;color:#e03030;text-align:center;">Fecha ${r.fechaFin}</td></tr>`).join("")}</tbody>
-      </table>` : `<div class="no-data" style="color:#2a9d2a;padding:16px;">✅ Sin suspendidos en ${esc(cat)}.</div>`}
-    </div>
-    <div class="cons-card">
-      <h3>🟨 Amarillas acumuladas (todas las categorías)</h3>
-      ${amarillas.length ? `
-      <table class="cons-table" style="width:100%;">
-        <thead><tr><th>Jugador</th><th style="width:60px;text-align:center;">Total</th><th style="width:90px;text-align:center;">Estado</th></tr></thead>
-        <tbody>${amarillas.map(r => `<tr><td style="font-weight:600">${esc(r.nombre)}</td>
-          <td style="text-align:center;font-weight:700;color:${r.total>=4?'#e03030':'#c49000'}">${r.total}</td>
-          <td style="text-align:center;">${r.en_suspension ? '🚫' : '—'}</td></tr>`).join("")}</tbody>
-      </table>` : `<div class="no-data" style="padding:16px;">Sin amarillas acumuladas.</div>`}
-    </div>
-    <div class="cons-card">
-      <h3>👥 Plantel — ${esc(cat)}</h3>
-      ${plantel.length ? `
-      <table class="cons-table" style="width:100%;">
-        <thead><tr><th>#</th><th>Jugador</th></tr></thead>
-        <tbody>${plantel.map((p, i) => `<tr><td class="rank">${i+1}</td><td>${esc(p.nombre)}</td></tr>`).join("")}</tbody>
-      </table>` : `<div class="no-data" style="padding:16px;">Sin jugadores cargados en ${esc(cat)}.</div>`}
-    </div>
-  `;
+  if (sec === "posiciones") {
+    const { data, error } = await sb.from("vista_posiciones").select("*").eq("categoria", cat);
+    cont.innerHTML = error ? `<div class="no-data">Error al cargar datos.</div>` : renderPosiciones(data || [], cat);
+    return;
+  }
+  if (sec === "goleadores") {
+    const { data, error } = await sb.from("vista_goleadores").select("*").eq("categoria", cat).order("goles", { ascending: false }).limit(20);
+    cont.innerHTML = error ? `<div class="no-data">Error al cargar datos.</div>` : renderGoleadores(data || [], cat);
+    return;
+  }
+  if (sec === "fixture") {
+    cont.innerHTML = await renderFixture(cat, false);
+    return;
+  }
+  if (sec === "suspendidos") {
+    const { data } = await sb.from("sanciones")
+      .select("tipo,fecha_inicio,fechas_a_cumplir,jugadores(nombre)")
+      .eq("club_id", clubId).eq("categoria", cat).eq("estado", "Vigente");
+    const susp = (data || []).map(s => ({
+      jugador: s.jugadores?.nombre || "", tipo: s.tipo, fechaFin: s.fecha_inicio + s.fechas_a_cumplir - 1
+    }));
+    cont.innerHTML = susp.length ? `
+      <div class="cons-card"><h3>🚫 Suspendidos vigentes — ${esc(cat)}</h3>
+      <table class="cons-table" style="width:100%;"><thead><tr><th>Jugador</th><th style="width:60px;">Tipo</th><th style="width:72px;text-align:center;">Hasta</th></tr></thead>
+      <tbody>${susp.map(r => `<tr><td style="font-weight:600">${esc(r.jugador)}</td><td>${esc(r.tipo)}</td>
+        <td style="font-weight:700;color:#e03030;text-align:center;">Fecha ${r.fechaFin}</td></tr>`).join("")}</tbody></table></div>`
+      : `<div class="cons-card"><h3>🚫 Suspendidos — ${esc(cat)}</h3><div class="no-data" style="color:#2a9d2a;padding:16px;">✅ Sin suspendidos.</div></div>`;
+    return;
+  }
+  if (sec === "amarillas") {
+    const { data } = await sb.from("acumulado_amarillas").select("nombre,total,en_suspension").eq("club_id", clubId).order("total", { ascending: false });
+    const amarillas = (data || []).filter(a => a.total > 0 || a.en_suspension);
+    cont.innerHTML = `<div class="cons-card"><h3>🟨 Amarillas acumuladas (todas las categorías)</h3>
+      ${amarillas.length ? `<table class="cons-table" style="width:100%;"><thead><tr><th>Jugador</th><th style="width:60px;text-align:center;">Total</th><th style="width:90px;text-align:center;">Estado</th></tr></thead>
+      <tbody>${amarillas.map(r => `<tr><td style="font-weight:600">${esc(r.nombre)}</td>
+        <td style="text-align:center;font-weight:700;color:${r.total>=4?'#e03030':'#c49000'}">${r.total}</td>
+        <td style="text-align:center;">${r.en_suspension ? '🚫' : '—'}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="no-data" style="padding:16px;">Sin amarillas acumuladas.</div>`}</div>`;
+    return;
+  }
+  if (sec === "plantel") {
+    const { data } = await sb.from("jugadores").select("nombre").eq("club_id", clubId).eq("categoria", cat).eq("activo", true).order("nombre");
+    const plantel = data || [];
+    cont.innerHTML = `<details class="miclub-plantel"><summary>👥 Plantel — ${esc(cat)} (${plantel.length})</summary>
+      <div class="cons-card" style="margin-top:10px;">
+      ${plantel.length ? `<table class="cons-table" style="width:100%;"><thead><tr><th>#</th><th>Jugador</th></tr></thead>
+      <tbody>${plantel.map((p, i) => `<tr><td class="rank">${i+1}</td><td>${esc(p.nombre)}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="no-data" style="padding:16px;">Sin jugadores cargados en ${esc(cat)}.</div>`}
+      </div></details>`;
+    return;
+  }
 }
 
 </script>
