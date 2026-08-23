@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ACPF – Planilla de Partido</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1a3fcc">
+<link rel="apple-touch-icon" href="./logo2.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
@@ -772,8 +775,9 @@
 
   .club-badge { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
                 margin-right: 7px; border-radius: 4px; background: white; }
-  .admin-header, .miclub-header2 {
-    background: linear-gradient(135deg,#1a3fcc,#0d1730); padding: 16px 20px;
+  .admin-header {
+    background: linear-gradient(180deg, #1a3fccf0 0%, #1a3fccc0 35%, #1a3fcc40 70%, transparent 100%);
+    padding: 26px 20px 40px;
     display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   }
   .btn-nueva-planilla {
@@ -1398,8 +1402,8 @@ function setDot(active) {
 function buildMatchHeader(localId, visitanteId, cat) {
   const fechaNum = document.getElementById("fecha-num").value;
   const nombreLocal = clubesCache[localId], nombreVisitante = clubesCache[visitanteId];
-  document.getElementById("mh-local").innerHTML = clubBadge(nombreLocal) + esc(nombreLocal);
-  document.getElementById("mh-visitante").innerHTML = clubBadge(nombreVisitante) + esc(nombreVisitante);
+  document.getElementById("mh-local").textContent = nombreLocal;
+  document.getElementById("mh-visitante").textContent = nombreVisitante;
   document.getElementById("mh-info").textContent = `Fecha ${fechaNum}  ·  ${cat}`;
   document.getElementById("match-header").style.background =
     `linear-gradient(135deg, ${clubColor(nombreLocal)} 0%, ${clubColor(nombreVisitante)} 100%)`;
@@ -2354,6 +2358,16 @@ async function renderMiClub() {
       </div>`;
     return;
   }
+}
+
+// ══════════════════════════════════
+// PWA — Service Worker (permite instalar la app y que se actualice
+// sola cuando se sube una nueva versión)
+// ══════════════════════════════════
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW no registrado:", err));
+  });
 }
 
 </script>

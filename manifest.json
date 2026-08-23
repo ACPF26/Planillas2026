@@ -1,0 +1,15 @@
+{
+  "name": "ACPF – Planilla de Partido",
+  "short_name": "ACPF",
+  "description": "Asociación Civil Paceña de Fútbol — carga de planillas, posiciones, goleadores y suspensiones.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1730",
+  "theme_color": "#1a3fcc",
+  "icons": [
+    { "src": "./logo2.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./logo2.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
