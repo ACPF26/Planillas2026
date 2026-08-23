@@ -7,7 +7,7 @@
 // logos o la foto de fondo, así se vuelven a descargar.
 // ══════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_NAME = `acpf-${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [
