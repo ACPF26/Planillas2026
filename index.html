@@ -2491,12 +2491,44 @@ async function renderMiClub() {
     return;
   }
   if (sec === "plantel") {
-    const { data } = await sb.from("jugadores").select("nombre").eq("club_id", clubId).eq("categoria", cat).eq("activo", true).order("nombre");
-    const plantel = data || [];
+    const [{ data: jugadoresData }, { data: incData }] = await Promise.all([
+      sb.from("jugadores").select("id,nombre").eq("club_id", clubId).eq("categoria", cat).eq("activo", true).order("nombre"),
+      sb.from("incidencias").select("jugador_id,goles,amarillas,roja,jugo,partidos!inner(categoria)")
+        .eq("club_id", clubId).eq("partidos.categoria", cat)
+    ]);
+    const plantel = jugadoresData || [];
+
+    // Acumulado simple por jugador — sin ninguna lógica de suspensión acá, solo sumar.
+    const stats = {};
+    (incData || []).forEach(i => {
+      const s = stats[i.jugador_id] || (stats[i.jugador_id] = { pj: 0, goles: 0, amarillas: 0, rojas: 0 });
+      if (i.jugo) s.pj++;
+      s.goles += i.goles || 0;
+      s.amarillas += i.amarillas || 0;
+      if (i.roja) s.rojas++;
+    });
+
     cont.innerHTML = `<div class="cons-card">
       <h3>👥 Plantel — ${esc(cat)} (${plantel.length})</h3>
-      ${plantel.length ? `<table class="cons-table" style="width:100%;"><thead><tr><th>#</th><th>Jugador</th></tr></thead>
-      <tbody>${plantel.map((p, i) => `<tr><td class="rank">${i+1}</td><td>${esc(p.nombre)}</td></tr>`).join("")}</tbody></table>`
+      ${plantel.length ? `<table class="cons-table" style="width:100%;table-layout:fixed;">
+      <thead><tr>
+        <th style="width:22px;">#</th><th>Jugador</th>
+        <th style="width:28px;text-align:center;" title="Partidos jugados">PJ</th>
+        <th style="width:24px;text-align:center;" title="Goles">⚽</th>
+        <th style="width:24px;text-align:center;" title="Amarillas">🟨</th>
+        <th style="width:24px;text-align:center;" title="Rojas">🟥</th>
+      </tr></thead>
+      <tbody>${plantel.map((p, i) => {
+        const s = stats[p.id] || { pj: 0, goles: 0, amarillas: 0, rojas: 0 };
+        return `<tr>
+          <td class="rank">${i+1}</td>
+          <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.nombre)}</td>
+          <td style="text-align:center;">${s.pj}</td>
+          <td style="text-align:center;">${s.goles}</td>
+          <td style="text-align:center;">${s.amarillas}</td>
+          <td style="text-align:center;">${s.rojas}</td>
+        </tr>`;
+      }).join("")}</tbody></table>`
       : `<div class="no-data" style="padding:16px;">Sin jugadores cargados en ${esc(cat)}.</div>`}
       </div>`;
     return;
