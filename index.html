@@ -2268,12 +2268,44 @@ async function renderFixture(cat, editable) {
         <td style="white-space:nowrap;">
           <button class="btn-mini" onclick="guardarFixtureRow('${r.id}')">Guardar</button>
           <button class="btn-mini danger" onclick="eliminarFixture('${r.id}')">✕</button>
+          ${r.estado === "Jugado" ? `<button class="btn-mini" style="background:#555;" onclick="probarAvisoMail(${r.fecha_nro}, '${cat}', '${r.club_local_id}', '${r.club_visitante_id}')" title="Manda un mail de PRUEBA (solo a la casilla de prueba configurada, nunca a delegados)">✉️ Probar</button>` : ""}
         </td>
       </tr>`;
     }).join("")}
     </tbody>
   </table></div></div>`;
   return html;
+}
+
+// Dispara el envío de PRUEBA del mail de resumen (nunca a delegados —
+// el destinatario real depende de la variable TEST_EMAIL_TO configurada
+// en el Edge Function; mientras esté puesta, siempre va ahí).
+async function probarAvisoMail(fechaNro, categoria, localId, visId) {
+  showToast("Buscando el partido...");
+  const { data: partidos } = await sb.from("partidos").select("id")
+    .eq("fecha_nro", fechaNro).eq("categoria", categoria)
+    .or(`and(club_local_id.eq.${localId},club_visitante_id.eq.${visId}),and(club_local_id.eq.${visId},club_visitante_id.eq.${localId})`)
+    .limit(1);
+
+  if (!partidos || !partidos.length) {
+    showToast("No encontré el partido cargado para probar el mail", "error");
+    return;
+  }
+
+  showToast("Enviando mail de prueba...");
+  const { data, error } = await sb.functions.invoke("send-match-email", {
+    body: { partido_id: partidos[0].id }
+  });
+
+  if (error) {
+    showToast("Error al enviar: " + error.message, "error");
+    return;
+  }
+  if (data?.ok) {
+    showToast(`✉️ Mail de prueba enviado a ${data.enviado_a}`, "success");
+  } else {
+    showToast("Error: " + (data?.error || "desconocido"), "error");
+  }
 }
 
 async function agregarFixture(cat) {
