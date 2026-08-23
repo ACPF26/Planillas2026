@@ -1343,6 +1343,13 @@ async function doLogout() {
   document.getElementById("pwd-input").value = "";
   document.getElementById("email-input").value = "";
   document.getElementById("login-error").textContent = "";
+
+  // Siempre arrancar en Posiciones la próxima vez que entre alguien
+  // (evita quedar pegado en la última sección que se miró).
+  miClubSecActual = "posiciones";
+  adminSecActual = "posiciones";
+  [document.querySelectorAll("#miclub-screen .stab"), document.querySelectorAll("#admin-home .stab")]
+    .forEach(grupo => grupo.forEach((b, i) => b.classList.toggle("active", i === 0)));
 }
 
 // ══════════════════════════════════
