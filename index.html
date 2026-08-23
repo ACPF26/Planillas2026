@@ -2155,8 +2155,12 @@ async function toggleVsIncidencias(fixtureId, fechaNro, categoria, localId, visI
     return;
   }
 
-  const { data: inc } = await sb.from("incidencias")
-    .select("goles,amarillas,roja,club_id,jugadores(nombre)")
+  // Vista pública (no la tabla directa): un delegado no puede leer la
+  // tabla `jugadores` de un club rival, así que la consulta a incidencias
+  // con join directo perdía esas filas. vista_incidencias ya trae el
+  // nombre resuelto, sin exponer el plantel completo del rival.
+  const { data: inc } = await sb.from("vista_incidencias")
+    .select("club_id,jugador,goles,amarillas,roja")
     .eq("partido_id", partidos[0].id)
     .or("goles.gt.0,amarillas.gt.0,roja.eq.true");
 
@@ -2168,7 +2172,7 @@ async function toggleVsIncidencias(fixtureId, fechaNro, categoria, localId, visI
       if (j.goles > 0) partes.push(`⚽${j.goles > 1 ? "x" + j.goles : ""}`);
       if (j.amarillas > 0) partes.push(`🟨${j.amarillas > 1 ? "x" + j.amarillas : ""}`);
       if (j.roja) partes.push("🟥");
-      return `<div class="vs-inc-row">${esc(j.jugadores?.nombre || "")} <span>${partes.join(" ")}</span></div>`;
+      return `<div class="vs-inc-row">${esc(j.jugador || "")} <span>${partes.join(" ")}</span></div>`;
     }).join("");
   };
 
