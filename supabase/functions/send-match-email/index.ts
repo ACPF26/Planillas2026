@@ -109,7 +109,13 @@ Deno.serve(async (req) => {
     const incLocal = (incidencias || []).filter((i: any) => i.club_id === partido.club_local_id);
     const incVis = (incidencias || []).filter((i: any) => i.club_id === partido.club_visitante_id);
 
-    const html = construirHtml(partido, localNombre, visNombre, incLocal, incVis);
+    // denomailer tiene un bug conocido: al codificar en quoted-printable,
+    // cualquier espacio justo antes de un salto de línea queda mal
+    // codificado y aparece como texto literal "=20" en el mail recibido.
+    // Sacando los saltos de línea del HTML antes de mandarlo, ese patrón
+    // nunca aparece (el resultado visual no cambia — los navegadores/
+    // clientes de mail ya colapsan espacios en blanco al renderizar HTML).
+    const html = construirHtml(partido, localNombre, visNombre, incLocal, incVis).replace(/\s+/g, " ").trim();
 
     const testTo = Deno.env.get("TEST_EMAIL_TO");
     const destinatario = testTo || Deno.env.get("GMAIL_USER")!; // nunca se manda a delegados sin querer
