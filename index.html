@@ -773,42 +773,54 @@
                   font-family: Arial, sans-serif; border-bottom: 2px solid #e8ecff; padding-bottom: 8px; }
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
 
-  /* ── Fixture público: tarjeta "VS" ── */
+  /* ── Fixture público: tarjeta "VS" (compacta) ── */
   .vs-card {
     background: rgba(255,255,255,0.92);
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
     border: 1px solid rgba(255,255,255,0.4);
-    border-radius: 16px; padding: 16px;
-    box-shadow: 0 8px 28px rgba(5,15,50,0.18); margin-bottom: 12px;
+    border-radius: 12px; padding: 8px 12px;
+    box-shadow: 0 4px 16px rgba(5,15,50,0.15); margin-bottom: 7px;
   }
   .vs-card-fecha {
-    text-align: center; font-family: Arial, sans-serif; font-size: 11px; font-weight: 700;
-    letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue);
-    background: var(--gray); border-radius: 999px; padding: 5px 16px;
-    width: fit-content; margin: 0 auto 16px;
+    text-align: center; font-family: Arial, sans-serif; font-size: 9px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase; color: var(--blue);
+    background: var(--gray); border-radius: 999px; padding: 2px 10px;
+    width: fit-content; margin: 0 auto 6px;
   }
-  .vs-card-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
-  .vs-team { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+  .vs-card-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .vs-team { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; min-width: 0; }
   .vs-team-escudo {
-    width: 60px; height: 60px; object-fit: contain; border-radius: 50%;
-    background: white; padding: 6px; box-sizing: border-box;
-    box-shadow: 0 2px 10px rgba(5,15,50,0.15);
+    width: 30px; height: 30px; object-fit: contain; border-radius: 50%;
+    background: white; padding: 3px; box-sizing: border-box;
+    box-shadow: 0 1px 6px rgba(5,15,50,0.15);
   }
   .vs-team-nombre {
-    font-family: Arial, sans-serif; font-size: 12.5px; font-weight: 700; color: var(--text);
-    text-align: center; line-height: 1.25; max-width: 110px;
+    font-family: Arial, sans-serif; font-size: 10px; font-weight: 700; color: var(--text);
+    text-align: center; line-height: 1.2; max-width: 90px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;
   }
   .vs-versus {
-    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    display: flex; align-items: center; gap: 5px; flex-shrink: 0;
   }
   .vs-gol {
-    font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--text);
-    min-width: 20px; text-align: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 19px; color: var(--text);
+    min-width: 15px; text-align: center;
   }
   .vs-versus-label {
-    font-family: 'Bebas Neue', sans-serif; font-size: 13px; color: var(--blue);
-    letter-spacing: 1px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 10px; color: var(--blue);
+    letter-spacing: 0.5px;
   }
+  .vs-toggle {
+    display: block; width: 100%; text-align: center; background: none; border: none;
+    color: #1a3fcc; font-size: 10px; font-weight: 700; font-family: Arial, sans-serif;
+    cursor: pointer; padding: 6px 0 0; margin-top: 6px; border-top: 1px solid #eef1fc;
+  }
+  .vs-incidencias { display: none; margin-top: 8px; gap: 10px; }
+  .vs-incidencias.open { display: flex; }
+  .vs-inc-col { flex: 1; min-width: 0; }
+  .vs-inc-col h5 { margin: 0 0 4px; font-size: 10px; color: #888; font-family: Arial, sans-serif; font-weight: 700; }
+  .vs-inc-row { font-size: 11px; padding: 2px 0; color: var(--text); font-family: Arial, sans-serif; }
+  .vs-inc-row span { color: #888; font-size: 10px; }
 
   .club-badge { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
                 margin-right: 7px; border-radius: 4px; background: white; }
@@ -1891,12 +1903,6 @@ window.addEventListener("load", () => {
   setTimeout(() => {
     introLogo.style.opacity = "1";
     introLogo.style.transform = "scale(1) translateY(0)";
-    const snd = new Audio("./intro.mp3");
-    snd.volume = 0.6;
-    snd.load();
-    snd.play()
-      .then(() => console.log("✅ Audio reproduciéndose"))
-      .catch(err => console.warn("❌ Audio bloqueado:", err.message));
   }, 300);
 
   // Fase 2: subtítulo aparece
@@ -2117,6 +2123,57 @@ function selectMiClubSec(btn, sec) {
 // ══════════════════════════════════
 // FIXTURE (compartido: admin editable / delegado solo lectura)
 // ══════════════════════════════════
+// Incidencias de un partido puntual del fixture (goles/amarillas/rojas por
+// jugador), colapsadas por defecto — se traen solo al abrir la tarjeta.
+async function toggleVsIncidencias(fixtureId, fechaNro, categoria, localId, visId, localNombre, visNombre) {
+  const cont = document.getElementById(`vsinc-${fixtureId}`);
+  const btn = document.getElementById(`vsbtn-${fixtureId}`);
+  if (!cont || !btn) return;
+
+  if (cont.classList.contains("open")) {
+    cont.classList.remove("open");
+    btn.textContent = "▾ Incidencias";
+    return;
+  }
+
+  btn.textContent = "Cargando...";
+
+  const { data: partidos } = await sb.from("partidos").select("id")
+    .eq("fecha_nro", fechaNro).eq("categoria", categoria)
+    .or(`and(club_local_id.eq.${localId},club_visitante_id.eq.${visId}),and(club_local_id.eq.${visId},club_visitante_id.eq.${localId})`)
+    .limit(1);
+
+  btn.textContent = "▴ Ocultar";
+  cont.classList.add("open");
+
+  if (!partidos || !partidos.length) {
+    cont.innerHTML = `<div class="vs-inc-row" style="color:#999;">Partido todavía no cargado.</div>`;
+    return;
+  }
+
+  const { data: inc } = await sb.from("incidencias")
+    .select("goles,amarillas,roja,club_id,jugadores(nombre)")
+    .eq("partido_id", partidos[0].id)
+    .or("goles.gt.0,amarillas.gt.0,roja.eq.true");
+
+  const lista = (clubId) => (inc || []).filter(j => j.club_id === clubId);
+  const renderLista = (items) => {
+    if (!items.length) return `<div class="vs-inc-row" style="color:#999;">Sin incidencias</div>`;
+    return items.map(j => {
+      const partes = [];
+      if (j.goles > 0) partes.push(`⚽${j.goles > 1 ? "x" + j.goles : ""}`);
+      if (j.amarillas > 0) partes.push(`🟨${j.amarillas > 1 ? "x" + j.amarillas : ""}`);
+      if (j.roja) partes.push("🟥");
+      return `<div class="vs-inc-row">${esc(j.jugadores?.nombre || "")} <span>${partes.join(" ")}</span></div>`;
+    }).join("");
+  };
+
+  cont.innerHTML = `
+    <div class="vs-inc-col"><h5>${esc(localNombre)}</h5>${renderLista(lista(localId))}</div>
+    <div class="vs-inc-col"><h5>${esc(visNombre)}</h5>${renderLista(lista(visId))}</div>
+  `;
+}
+
 async function renderFixture(cat, editable) {
   const { data, error } = await sb.from("fixture").select("*").eq("categoria", cat).order("fecha_nro");
   if (error) { console.error(error); return `<div class="no-data">Error al cargar el fixture.</div>`; }
@@ -2164,6 +2221,11 @@ async function renderFixture(cat, editable) {
             <div class="vs-team-nombre">${esc(visNombre)}</div>
           </div>
         </div>
+        <button class="vs-toggle" id="vsbtn-${r.id}"
+          onclick="toggleVsIncidencias('${r.id}', ${r.fecha_nro}, '${cat}', '${r.club_local_id}', '${r.club_visitante_id}', '${esc(localNombre).replace(/'/g, "\\'")}', '${esc(visNombre).replace(/'/g, "\\'")}')">
+          ▾ Incidencias
+        </button>
+        <div class="vs-incidencias" id="vsinc-${r.id}"></div>
       </div>`;
     }).join("");
     html += `</div>`;
