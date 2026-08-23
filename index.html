@@ -773,6 +773,43 @@
                   font-family: Arial, sans-serif; border-bottom: 2px solid #e8ecff; padding-bottom: 8px; }
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
 
+  /* ── Fixture público: tarjeta "VS" ── */
+  .vs-card {
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 16px; padding: 16px;
+    box-shadow: 0 8px 28px rgba(5,15,50,0.18); margin-bottom: 12px;
+  }
+  .vs-card-fecha {
+    text-align: center; font-family: Arial, sans-serif; font-size: 11px; font-weight: 700;
+    letter-spacing: 1.2px; text-transform: uppercase; color: var(--blue);
+    background: var(--gray); border-radius: 999px; padding: 5px 16px;
+    width: fit-content; margin: 0 auto 16px;
+  }
+  .vs-card-row { display: flex; align-items: center; justify-content: center; gap: 14px; }
+  .vs-team { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+  .vs-team-escudo {
+    width: 60px; height: 60px; object-fit: contain; border-radius: 50%;
+    background: white; padding: 6px; box-sizing: border-box;
+    box-shadow: 0 2px 10px rgba(5,15,50,0.15);
+  }
+  .vs-team-nombre {
+    font-family: Arial, sans-serif; font-size: 12.5px; font-weight: 700; color: var(--text);
+    text-align: center; line-height: 1.25; max-width: 110px;
+  }
+  .vs-versus {
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .vs-gol {
+    font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--text);
+    min-width: 20px; text-align: center;
+  }
+  .vs-versus-label {
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px; color: var(--blue);
+    letter-spacing: 1px;
+  }
+
   .club-badge { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
                 margin-right: 7px; border-radius: 4px; background: white; }
   .admin-header {
@@ -843,6 +880,7 @@
     background: none; border: 1.5px solid #d0d8ff; color: #1a3fcc; border-radius: 20px;
     padding: 5px 12px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: Arial, sans-serif;
   }
+
 </style>
 </head>
 <body>
@@ -1174,6 +1212,12 @@ function clubBadge(nombre) {
 }
 function clubColor(nombre) {
   return (CLUBES_VISUAL[nombre] && CLUBES_VISUAL[nombre].color) || "#1a3fcc";
+}
+function vsTeamEscudo(nombre) {
+  const v = CLUBES_VISUAL[nombre];
+  const src = v ? v.logo : "./logo2.png";
+  const color = clubColor(nombre);
+  return `<img class="vs-team-escudo" src="${src}" alt="" style="border:2.5px solid ${color};" onerror="this.style.display='none'">`;
 }
 const TOTAL_FECHAS = 14;
 
@@ -2099,20 +2143,40 @@ async function renderFixture(cat, editable) {
     return html;
   }
 
+  if (!editable) {
+    html += rows.map(r => {
+      const localNombre = clubesCache[r.club_local_id] || "?";
+      const visNombre = clubesCache[r.club_visitante_id] || "?";
+      return `
+      <div class="vs-card">
+        <div class="vs-card-fecha">Fecha ${r.fecha_nro}</div>
+        <div class="vs-card-row">
+          <div class="vs-team">
+            ${vsTeamEscudo(localNombre)}
+            <div class="vs-team-nombre">${esc(localNombre)}</div>
+          </div>
+          <div class="vs-versus">
+            <span class="vs-gol">${r.goles_local ?? "-"}</span>
+            <span class="vs-versus-label">VS</span>
+            <span class="vs-gol">${r.goles_visitante ?? "-"}</span>
+          </div>
+          <div class="vs-team">
+            ${vsTeamEscudo(visNombre)}
+            <div class="vs-team-nombre">${esc(visNombre)}</div>
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+    html += `</div>`;
+    return html;
+  }
+
   html += `<div class="table-scroll"><table class="cons-table" style="min-width:420px;">
-    <thead><tr><th>Fecha</th><th>Partido</th><th style="text-align:center;">Resultado</th><th>Estado</th>${editable ? "<th></th>" : ""}</tr></thead>
+    <thead><tr><th>Fecha</th><th>Partido</th><th style="text-align:center;">Resultado</th><th>Estado</th><th></th></tr></thead>
     <tbody>
     ${rows.map(r => {
       const localNombre = clubesCache[r.club_local_id] || "?";
       const visNombre = clubesCache[r.club_visitante_id] || "?";
-      if (!editable) {
-        return `<tr>
-          <td>Fecha ${r.fecha_nro}</td>
-          <td>${esc(localNombre)} <span style="color:#888;">vs</span> ${esc(visNombre)}</td>
-          <td style="text-align:center;font-weight:700;">${r.goles_local ?? "–"} - ${r.goles_visitante ?? "–"}</td>
-          <td>${r.estado === "Jugado" ? "✅ Jugado" : "⏳ Pendiente"}</td>
-        </tr>`;
-      }
       return `<tr class="edit-row">
         <td>Fecha ${r.fecha_nro}</td>
         <td>${esc(localNombre)} <span style="color:#888;">vs</span> ${esc(visNombre)}</td>
@@ -2328,21 +2392,26 @@ async function renderMiClub() {
     const { data } = await sb.from("acumulado_amarillas")
       .select("nombre,total,en_suspension,cadetes,sub_20,reserva,primera")
       .eq("club_id", clubId).order("total", { ascending: false });
-    const amarillas = (data || []).filter(a => a.total > 0 || a.en_suspension);
-    const catsDe = a => {
+    const colDeCat = { "Cadetes": "cadetes", "Sub-20": "sub_20", "Reserva": "reserva", "Primera": "primera" };
+    const colActual = colDeCat[cat];
+    // Solo jugadores con amarillas en ESTA categoría.
+    const amarillas = (data || []).filter(a => a[colActual] > 0);
+    // Si además tiene amarillas en otra categoría, lo marcamos como referencia.
+    const otrasCatsDe = a => {
       const partes = [];
-      if (a.cadetes > 0) partes.push("Cadetes");
-      if (a.sub_20 > 0) partes.push("Sub-20");
-      if (a.reserva > 0) partes.push("Reserva");
-      if (a.primera > 0) partes.push("Primera");
+      if (cat !== "Cadetes" && a.cadetes > 0) partes.push("Cadetes");
+      if (cat !== "Sub-20" && a.sub_20 > 0) partes.push("Sub-20");
+      if (cat !== "Reserva" && a.reserva > 0) partes.push("Reserva");
+      if (cat !== "Primera" && a.primera > 0) partes.push("Primera");
       return partes.join(", ");
     };
-    cont.innerHTML = `<div class="cons-card"><h3>🟨 Amarillas acumuladas (todas las categorías)</h3>
-      ${amarillas.length ? `<table class="cons-table" style="width:100%;"><thead><tr><th>Jugador</th><th style="width:60px;text-align:center;">Total</th><th style="width:90px;text-align:center;">Estado</th></tr></thead>
-      <tbody>${amarillas.map(r => `<tr><td style="font-weight:600">${esc(r.nombre)}${catsDe(r) ? ` <span style="font-weight:400;color:#888;font-size:11px;">(${esc(catsDe(r))})</span>` : ""}</td>
+    cont.innerHTML = `<div class="cons-card"><h3>🟨 Amarillas — ${esc(cat)}</h3>
+      ${amarillas.length ? `<table class="cons-table" style="width:100%;"><thead><tr><th>Jugador</th><th style="width:56px;text-align:center;" title="Amarillas en esta categoría">${esc(cat)}</th><th style="width:56px;text-align:center;" title="Acumulado en todas las categorías">Total</th><th style="width:80px;text-align:center;">Estado</th></tr></thead>
+      <tbody>${amarillas.map(r => { const otras = otrasCatsDe(r); return `<tr><td style="font-weight:600">${esc(r.nombre)}${otras ? ` <span style="font-weight:400;color:#888;font-size:11px;">(+ en ${esc(otras)})</span>` : ""}</td>
+        <td style="text-align:center;font-weight:700;">${r[colActual]}</td>
         <td style="text-align:center;font-weight:700;color:${r.total>=4?'#e03030':'#c49000'}">${r.total}</td>
-        <td style="text-align:center;">${r.en_suspension ? '🚫' : '—'}</td></tr>`).join("")}</tbody></table>`
-      : `<div class="no-data" style="padding:16px;">Sin amarillas acumuladas.</div>`}</div>`;
+        <td style="text-align:center;">${r.en_suspension ? '🚫' : '—'}</td></tr>`; }).join("")}</tbody></table>`
+      : `<div class="no-data" style="padding:16px;">Sin amarillas en ${esc(cat)}.</div>`}</div>`;
     return;
   }
   if (sec === "plantel") {
