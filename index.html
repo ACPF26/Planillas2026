@@ -611,7 +611,9 @@
     position: fixed;
     bottom: 24px;
     left: 50%;
-    transform: translateX(-50%) translateY(80px);
+    transform: translateX(-50%) translateY(20px);
+    opacity: 0;
+    pointer-events: none;
     background: #1a1f3a;
     color: white;
     padding: 12px 24px;
@@ -619,10 +621,11 @@
     font-size: 14px;
     font-weight: 500;
     z-index: 300;
-    transition: transform 0.3s;
+    transition: transform 0.3s, opacity 0.3s;
     box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    max-width: calc(100vw - 32px);
   }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
   .toast.error { background: var(--red); }
   .toast.success { background: var(--green); }
 
@@ -1860,10 +1863,11 @@ function newMatch() {
 // ══════════════════════════════════
 function showToast(msg, type = "") {
   const t = document.getElementById("toast");
+  clearTimeout(t._hideTimer);
   t.textContent = msg;
   t.className = "toast" + (type ? ` ${type}` : "");
   t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 3000);
+  t._hideTimer = setTimeout(() => t.classList.remove("show"), 3000);
 }
 
 function showNameTooltip(el) {
