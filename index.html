@@ -904,7 +904,7 @@
 <div id="intro-screen" class="hero-bg" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;overflow:hidden;">
   <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 55%,rgba(26,63,204,0.22) 0%,transparent 68%);pointer-events:none;"></div>
   <div id="intro-logo" style="position:relative;width:300px;height:300px;display:flex;align-items:center;justify-content:center;">
-    <canvas id="intro-canvas" style="position:absolute;inset:0;"></canvas>
+    <canvas id="intro-canvas" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;"></canvas>
     <img src="./logo2.png" alt="ACPF" style="position:relative;width:230px;height:auto;opacity:0;">
   </div>
   <div id="intro-sub" style="opacity:0;transition:opacity 0.9s cubic-bezier(.4,0,.2,1);margin-top:22px;color:rgba(255,255,255,0.55);font-family:Arial,sans-serif;font-size:11px;letter-spacing:3.5px;text-transform:uppercase;text-align:center;">
@@ -1906,59 +1906,65 @@ document.addEventListener("click", function(e) {
 // INTRO ANIMATION
 // ══════════════════════════════════
 window.addEventListener("load", () => {
-  const introSub  = document.getElementById("intro-sub");
-  const intro     = document.getElementById("intro-screen");
-  const menu      = document.getElementById("login-screen"); // sin menú público por ahora — ver volverMenu()
-  const canvas    = document.getElementById("intro-canvas");
-  const introImg  = document.querySelector("#intro-logo img");
-  const ctx       = canvas.getContext("2d");
-  const SIZE      = 300;
-  const dpr       = window.devicePixelRatio || 1;
-  canvas.width  = SIZE * dpr;
-  canvas.height = SIZE * dpr;
-  canvas.style.width  = SIZE + "px";
-  canvas.style.height = SIZE + "px";
+  const introSub   = document.getElementById("intro-sub");
+  const intro      = document.getElementById("intro-screen");
+  const menu       = document.getElementById("login-screen"); // sin menú público por ahora — ver volverMenu()
+  const canvas     = document.getElementById("intro-canvas");
+  const introImg   = document.querySelector("#intro-logo img");
+  const ctx        = canvas.getContext("2d");
+  const LOGO_BOX   = 300;   // caja lógica donde se arma el logo (coincide con el tamaño final mostrado)
+  const CANVAS_SIZE = 760;  // lienzo más grande para que las partículas nazcan bien lejos, sin recorte
+  const OFFSET     = (CANVAS_SIZE - LOGO_BOX) / 2;
+  const dpr        = window.devicePixelRatio || 1;
+  canvas.width  = CANVAS_SIZE * dpr;
+  canvas.height = CANVAS_SIZE * dpr;
+  canvas.style.width  = CANVAS_SIZE + "px";
+  canvas.style.height = CANVAS_SIZE + "px";
   ctx.scale(dpr, dpr);
 
   // Arma la nube de puntos que forma el logo a partir de su canal alfa
   function buildPoints(img) {
     const off  = document.createElement("canvas");
-    off.width = SIZE; off.height = SIZE;
+    off.width = LOGO_BOX; off.height = LOGO_BOX;
     const octx = off.getContext("2d");
-    const scale = Math.min(SIZE / img.width, SIZE / img.height) * 0.78;
+    const scale = Math.min(LOGO_BOX / img.width, LOGO_BOX / img.height) * 0.78;
     const w = img.width * scale, h = img.height * scale;
-    octx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
-    const data = octx.getImageData(0, 0, SIZE, SIZE).data;
+    octx.drawImage(img, (LOGO_BOX - w) / 2, (LOGO_BOX - h) / 2, w, h);
+    const data = octx.getImageData(0, 0, LOGO_BOX, LOGO_BOX).data;
     const points = [];
-    for (let y = 0; y < SIZE; y += 4) {
-      for (let x = 0; x < SIZE; x += 4) {
-        if (data[(y * SIZE + x) * 4 + 3] > 100) points.push({ x, y });
+    for (let y = 0; y < LOGO_BOX; y += 2) {
+      for (let x = 0; x < LOGO_BOX; x += 2) {
+        if (data[(y * LOGO_BOX + x) * 4 + 3] > 100) points.push({ x, y });
       }
     }
+    // El logo final se muestra exactamente del mismo tamaño que la silueta armada,
+    // para que no haya ningún salto al reemplazar las partículas por la imagen nítida.
+    introImg.style.width = w + "px";
     return points;
   }
 
-  // Anima partículas convergiendo desde afuera hacia los puntos del logo
+  // Anima partículas convergiendo desde muy lejos hacia los puntos del logo
   function runParticles(points) {
+    const center = CANVAS_SIZE / 2;
     const particles = points.map(p => {
       const angle = Math.random() * Math.PI * 2;
-      const dist  = 160 + Math.random() * 230;
+      const dist  = 300 + Math.random() * 340;
       return {
-        sx: SIZE / 2 + Math.cos(angle) * dist,
-        sy: SIZE / 2 + Math.sin(angle) * dist,
-        tx: p.x, ty: p.y,
-        delay: Math.random() * 300,
-        dur: 650 + Math.random() * 500,
-        size: 1.1 + Math.random() * 1.6
+        sx: center + Math.cos(angle) * dist,
+        sy: center + Math.sin(angle) * dist,
+        tx: p.x + OFFSET, ty: p.y + OFFSET,
+        delay: Math.random() * 450,
+        dur: 750 + Math.random() * 550,
+        size: 0.6 + Math.random() * 0.9
       };
     });
 
     const start = performance.now();
-    const MIN_DURATION = 1250;
+    const MIN_DURATION = 1550;
 
     function frame(now) {
       const t = now - start;
-      ctx.clearRect(0, 0, SIZE, SIZE);
+      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
       let allDone = true;
       for (const p of particles) {
         let pt = (t - p.delay) / p.dur;
@@ -1968,30 +1974,30 @@ window.addEventListener("load", () => {
         const x = p.sx + (p.tx - p.sx) * e;
         const y = p.sy + (p.ty - p.sy) * e;
         ctx.beginPath();
-        ctx.fillStyle = `rgba(255,255,255,${0.5 + 0.5 * e})`;
-        ctx.shadowColor = "rgba(120,170,255,0.9)";
-        ctx.shadowBlur = 6;
+        ctx.fillStyle = `rgba(255,255,255,${0.55 + 0.45 * e})`;
+        ctx.shadowColor = "rgba(120,170,255,0.85)";
+        ctx.shadowBlur = 3;
         ctx.arc(x, y, p.size, 0, Math.PI * 2);
         ctx.fill();
       }
       if (!allDone || t < MIN_DURATION) {
         requestAnimationFrame(frame);
       } else {
-        // Partículas completas: destello y reemplazo por el logo nítido
-        canvas.style.transition = "opacity 0.4s ease";
-        introImg.style.transition = "opacity 0.4s ease";
+        // Partículas completas: crossfade inmediato hacia el logo nítido (mismo tamaño, sin salto)
+        canvas.style.transition = "opacity 0.5s ease";
+        introImg.style.transition = "opacity 0.5s ease";
         introImg.style.opacity = "1";
         requestAnimationFrame(() => { canvas.style.opacity = "0"; });
-        setTimeout(() => { canvas.style.display = "none"; }, 400);
+        setTimeout(() => { canvas.style.display = "none"; }, 500);
 
         // Subtítulo
-        setTimeout(() => { introSub.style.opacity = "1"; }, 150);
+        setTimeout(() => { introSub.style.opacity = "1"; }, 200);
 
         // Brillo sutil en el logo
         setTimeout(() => {
           introImg.style.filter = "drop-shadow(0 0 20px rgba(255,255,255,0.5))";
-          introImg.style.transition = "filter 0.6s ease, opacity 0.4s ease";
-        }, 550);
+          introImg.style.transition = "filter 0.6s ease, opacity 0.5s ease";
+        }, 650);
 
         // Fade out intro revelando el menú (ya visible detrás, sin salto de fondo)
         setTimeout(() => {
@@ -2000,7 +2006,7 @@ window.addEventListener("load", () => {
           intro.style.transition = "opacity 0.75s cubic-bezier(.4,0,.2,1)";
           intro.style.opacity = "0";
           setTimeout(() => { intro.style.display = "none"; }, 750);
-        }, 1700);
+        }, 2500);
       }
     }
     requestAnimationFrame(frame);
