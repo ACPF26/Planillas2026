@@ -904,8 +904,9 @@
 <div id="intro-screen" class="hero-bg" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;overflow:hidden;">
   <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 55%,rgba(26,63,204,0.22) 0%,transparent 68%);pointer-events:none;"></div>
   <div id="intro-logo" style="position:relative;width:300px;height:300px;display:flex;align-items:center;justify-content:center;">
-    <canvas id="intro-canvas" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;"></canvas>
+    <canvas id="intro-canvas" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 0 2px rgba(150,190,255,0.75));"></canvas>
     <img src="./logo2.png" alt="ACPF" style="position:relative;width:230px;height:auto;opacity:0;">
+    <div id="intro-flash" style="position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;"></div>
   </div>
   <div id="intro-sub" style="opacity:0;transition:opacity 0.9s cubic-bezier(.4,0,.2,1);margin-top:22px;color:rgba(255,255,255,0.55);font-family:Arial,sans-serif;font-size:11px;letter-spacing:3.5px;text-transform:uppercase;text-align:center;">
     Asociación Civil Paceña de Fútbol
@@ -1932,8 +1933,10 @@ window.addEventListener("load", () => {
     octx.drawImage(img, (LOGO_BOX - w) / 2, (LOGO_BOX - h) / 2, w, h);
     const data = octx.getImageData(0, 0, LOGO_BOX, LOGO_BOX).data;
     const points = [];
-    for (let y = 0; y < LOGO_BOX; y += 2) {
-      for (let x = 0; x < LOGO_BOX; x += 2) {
+    // Un punto por cada píxel con alfa: el logo es de trazo fino y con
+    // muestreo salteado quedaban huecos en las líneas (ojo del balón, aves, etc.)
+    for (let y = 0; y < LOGO_BOX; y++) {
+      for (let x = 0; x < LOGO_BOX; x++) {
         if (data[(y * LOGO_BOX + x) * 4 + 3] > 100) points.push({ x, y });
       }
     }
@@ -1955,12 +1958,13 @@ window.addEventListener("load", () => {
         tx: p.x + OFFSET, ty: p.y + OFFSET,
         delay: Math.random() * 450,
         dur: 750 + Math.random() * 550,
-        size: 0.6 + Math.random() * 0.9
+        size: 0.45 + Math.random() * 0.55
       };
     });
 
     const start = performance.now();
     const MIN_DURATION = 1550;
+    const flash = document.getElementById("intro-flash");
 
     function frame(now) {
       const t = now - start;
@@ -1973,22 +1977,27 @@ window.addEventListener("load", () => {
         const e = 1 - Math.pow(1 - pt, 3);
         const x = p.sx + (p.tx - p.sx) * e;
         const y = p.sy + (p.ty - p.sy) * e;
+        // Al asentarse, cada partícula "florece" un poco para que no queden
+        // huecos en el trazo fino del logo antes del cambio a la imagen nítida.
+        const bloom = Math.max(0, (pt - 0.75) / 0.25);
+        const r = p.size * (1 + bloom * 2.2);
         ctx.beginPath();
         ctx.fillStyle = `rgba(255,255,255,${0.55 + 0.45 * e})`;
-        ctx.shadowColor = "rgba(120,170,255,0.85)";
-        ctx.shadowBlur = 3;
-        ctx.arc(x, y, p.size, 0, Math.PI * 2);
+        ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.fill();
       }
       if (!allDone || t < MIN_DURATION) {
         requestAnimationFrame(frame);
       } else {
-        // Partículas completas: crossfade inmediato hacia el logo nítido (mismo tamaño, sin salto)
-        canvas.style.transition = "opacity 0.5s ease";
-        introImg.style.transition = "opacity 0.5s ease";
+        // Partículas completas: un flash breve tapa el cambio hacia el logo nítido
+        flash.style.transition = "opacity 0.1s ease";
+        flash.style.opacity = "0.6";
         introImg.style.opacity = "1";
-        requestAnimationFrame(() => { canvas.style.opacity = "0"; });
-        setTimeout(() => { canvas.style.display = "none"; }, 500);
+        canvas.style.display = "none";
+        requestAnimationFrame(() => {
+          flash.style.transition = "opacity 0.35s ease";
+          flash.style.opacity = "0";
+        });
 
         // Subtítulo
         setTimeout(() => { introSub.style.opacity = "1"; }, 200);
@@ -1996,8 +2005,8 @@ window.addEventListener("load", () => {
         // Brillo sutil en el logo
         setTimeout(() => {
           introImg.style.filter = "drop-shadow(0 0 20px rgba(255,255,255,0.5))";
-          introImg.style.transition = "filter 0.6s ease, opacity 0.5s ease";
-        }, 650);
+          introImg.style.transition = "filter 0.6s ease";
+        }, 500);
 
         // Fade out intro revelando el menú (ya visible detrás, sin salto de fondo)
         setTimeout(() => {
