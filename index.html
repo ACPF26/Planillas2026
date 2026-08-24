@@ -906,6 +906,13 @@
   <div id="intro-logo" style="position:relative;width:300px;height:300px;display:flex;align-items:center;justify-content:center;">
     <canvas id="intro-canvas" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 0 2px rgba(150,190,255,0.75));"></canvas>
     <img src="./logo2.png" alt="ACPF" style="position:relative;width:230px;height:auto;opacity:0;">
+    <div id="intro-shine" style="position:absolute;inset:0;opacity:0;pointer-events:none;
+      -webkit-mask-image:url('./logo2.png'); mask-image:url('./logo2.png');
+      -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+      -webkit-mask-position:center; mask-position:center;
+      -webkit-mask-size:230px auto; mask-size:230px auto;
+      background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,0.95) 50%,transparent 60%);
+      background-size:280% 280%;background-position:140% 140%;"></div>
     <div id="intro-flash" style="position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;"></div>
   </div>
   <div id="intro-sub" style="opacity:0;transition:opacity 0.9s cubic-bezier(.4,0,.2,1);margin-top:22px;color:rgba(255,255,255,0.55);font-family:Arial,sans-serif;font-size:11px;letter-spacing:3.5px;text-transform:uppercase;text-align:center;">
@@ -1943,6 +1950,9 @@ window.addEventListener("load", () => {
     // El logo final se muestra exactamente del mismo tamaño que la silueta armada,
     // para que no haya ningún salto al reemplazar las partículas por la imagen nítida.
     introImg.style.width = w + "px";
+    const shine = document.getElementById("intro-shine");
+    shine.style.webkitMaskSize = w + "px auto";
+    shine.style.maskSize = w + "px auto";
     return points;
   }
 
@@ -1965,6 +1975,7 @@ window.addEventListener("load", () => {
     const start = performance.now();
     const MIN_DURATION = 1550;
     const flash = document.getElementById("intro-flash");
+    const shine = document.getElementById("intro-shine");
 
     function frame(now) {
       const t = now - start;
@@ -1977,10 +1988,10 @@ window.addEventListener("load", () => {
         const e = 1 - Math.pow(1 - pt, 3);
         const x = p.sx + (p.tx - p.sx) * e;
         const y = p.sy + (p.ty - p.sy) * e;
-        // Al asentarse, cada partícula "florece" un poco para que no queden
-        // huecos en el trazo fino del logo antes del cambio a la imagen nítida.
+        // Al asentarse, cada partícula "florece" apenas para tapar el espacio
+        // entre píxeles vecinos, sin inflar el tamaño real del logo.
         const bloom = Math.max(0, (pt - 0.75) / 0.25);
-        const r = p.size * (1 + bloom * 2.2);
+        const r = p.size * (1 + bloom * 0.35);
         ctx.beginPath();
         ctx.fillStyle = `rgba(255,255,255,${0.55 + 0.45 * e})`;
         ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -1997,6 +2008,16 @@ window.addEventListener("load", () => {
         requestAnimationFrame(() => {
           flash.style.transition = "opacity 0.35s ease";
           flash.style.opacity = "0";
+        });
+
+        // Reflejo de luz que recorre el logo justo después del cambio
+        shine.style.transition = "none";
+        shine.style.backgroundPosition = "140% 140%";
+        shine.style.opacity = "1";
+        requestAnimationFrame(() => {
+          shine.style.transition = "background-position 0.8s ease-out, opacity 0.8s ease-out 0.15s";
+          shine.style.backgroundPosition = "-40% -40%";
+          shine.style.opacity = "0";
         });
 
         // Subtítulo
