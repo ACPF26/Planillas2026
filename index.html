@@ -971,6 +971,7 @@
     <button class="ctab" onclick="selectCat(this,'Reserva')">Reserva</button>
     <button class="ctab" onclick="selectCat(this,'Sub-20')">Sub-20</button>
     <button class="ctab" onclick="selectCat(this,'Cadetes')">Cadetes</button>
+    <button class="ctab" onclick="selectCat(this,'Veteranos')">Veteranos</button>
   </div>
 
   <!-- Tabs sección -->
@@ -1003,6 +1004,7 @@
     <div class="club-hero" id="miclub-hero" style="position:relative;background:none;">
       <img class="club-hero-escudo" id="miclub-escudo" src="./logo2.png" alt="">
       <span class="club-hero-nombre" id="miclub-nombre">Mi Club</span>
+      <button class="logout-btn" style="position:absolute;top:14px;right:16px;" onclick="doLogout()">Cerrar sesión</button>
     </div>
     <div style="display:flex;gap:8px;padding:6px 16px 8px;overflow-x:auto;">
       <button class="stab active" onclick="selectMiClubSec(this,'posiciones')">🏆 Posiciones</button>
@@ -1020,7 +1022,7 @@
       <button class="bn-item" onclick="selectMiClubCat(this,'Reserva')"><span class="bn-icon">🥈</span>Reserva</button>
       <button class="bn-item" onclick="selectMiClubCat(this,'Sub-20')"><span class="bn-icon">🧑</span>Sub-20</button>
       <button class="bn-item" onclick="selectMiClubCat(this,'Cadetes')"><span class="bn-icon">🧒</span>Cadetes</button>
-      <button class="bn-item bn-exit" onclick="doLogout()"><span class="bn-icon">🚪</span>Salir</button>
+      <button class="bn-item" onclick="selectMiClubCat(this,'Veteranos')"><span class="bn-icon">🧓</span>Veteranos</button>
     </nav>
   </div>
 </div>
@@ -1033,7 +1035,10 @@
         <img src="./logo2.png" alt="ACPF" style="height:32px;width:auto;filter:brightness(0) invert(1);">
         <span style="color:white;font-family:Arial,sans-serif;font-weight:700;font-size:15px;">Panel ACPF</span>
       </div>
-      <button class="btn-nueva-planilla" onclick="mostrarWizard()">+ Cargar Planilla</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn-nueva-planilla" onclick="mostrarWizard()">+ Cargar Planilla</button>
+        <button class="logout-btn" onclick="doLogout()">Cerrar sesión</button>
+      </div>
     </div>
     <div style="display:flex;gap:8px;padding:14px 16px 8px;overflow-x:auto;">
       <button class="stab active" onclick="selectAdminSec(this,'posiciones')">🏆 Posiciones</button>
@@ -1049,7 +1054,7 @@
       <button class="bn-item" onclick="selectAdminCat(this,'Reserva')"><span class="bn-icon">🥈</span>Reserva</button>
       <button class="bn-item" onclick="selectAdminCat(this,'Sub-20')"><span class="bn-icon">🧑</span>Sub-20</button>
       <button class="bn-item" onclick="selectAdminCat(this,'Cadetes')"><span class="bn-icon">🧒</span>Cadetes</button>
-      <button class="bn-item bn-exit" onclick="doLogout()"><span class="bn-icon">🚪</span>Salir</button>
+      <button class="bn-item" onclick="selectAdminCat(this,'Veteranos')"><span class="bn-icon">🧓</span>Veteranos</button>
     </nav>
   </div>
 </div>
@@ -1100,6 +1105,7 @@
               <option value="Sub-20">Sub-20</option>
               <option value="Reserva">Reserva</option>
               <option value="Primera">Primera</option>
+              <option value="Veteranos">Veteranos</option>
             </select>
           </div>
           <div class="form-group">
@@ -1230,7 +1236,7 @@ const SUPABASE_URL = "https://rhzcdvfpfrkwqjqlycnr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoemNkdmZwZnJrd3FqcWx5Y25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzg3NjYsImV4cCI6MjEwMjkxNDc2Nn0.yEypDW7tC_RUs6LN-I94VAdoN6GnYhuG8DptCmx6OUY";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const CATEGORIAS = ["Cadetes", "Sub-20", "Reserva", "Primera"];
+const CATEGORIAS = ["Cadetes", "Sub-20", "Reserva", "Primera", "Veteranos"];
 
 // Escudos y color dominante de cada club (extraído de los PNG que subieron).
 const CLUBES_VISUAL = {
@@ -1241,7 +1247,8 @@ const CLUBES_VISUAL = {
   "Once Corazones": { logo: "./once_corazones.png",  color: "#103070" },
   "San Antonio":    { logo: "./san_antonio.png",     color: "#e02020" },
   "San Isidro":     { logo: "./san_isidro.png",      color: "#e07000" },
-  "Sol Naciente":   { logo: "./sol_naciente.png",     color: "#b00000" }
+  "Sol Naciente":   { logo: "./sol_naciente.png",     color: "#b00000" },
+  "Sol de América": { logo: "./sol_de_america.png",   color: "#c9a227" }
 };
 function clubBadge(nombre) {
   const v = CLUBES_VISUAL[nombre];
@@ -2671,9 +2678,9 @@ async function renderMiClub() {
   }
   if (sec === "amarillas") {
     const { data } = await sb.from("acumulado_amarillas")
-      .select("nombre,total,en_suspension,cadetes,sub_20,reserva,primera")
+      .select("nombre,total,en_suspension,cadetes,sub_20,reserva,primera,veteranos")
       .eq("club_id", clubId).order("total", { ascending: false });
-    const colDeCat = { "Cadetes": "cadetes", "Sub-20": "sub_20", "Reserva": "reserva", "Primera": "primera" };
+    const colDeCat = { "Cadetes": "cadetes", "Sub-20": "sub_20", "Reserva": "reserva", "Primera": "primera", "Veteranos": "veteranos" };
     const colActual = colDeCat[cat];
     // Solo jugadores con amarillas en ESTA categoría.
     const amarillas = (data || []).filter(a => a[colActual] > 0);
@@ -2684,6 +2691,7 @@ async function renderMiClub() {
       if (cat !== "Sub-20" && a.sub_20 > 0) partes.push("Sub-20");
       if (cat !== "Reserva" && a.reserva > 0) partes.push("Reserva");
       if (cat !== "Primera" && a.primera > 0) partes.push("Primera");
+      if (cat !== "Veteranos" && a.veteranos > 0) partes.push("Veteranos");
       return partes.join(", ");
     };
     cont.innerHTML = `<div class="cons-card"><h3>🟨 Amarillas — ${esc(cat)}</h3>
