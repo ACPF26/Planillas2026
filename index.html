@@ -1634,6 +1634,10 @@ function renderPlayerRow(container, player, idx, team) {
         <button class="counter-btn red" title="Roja"
           data-id="${id}" data-val="0"
           onclick="cycleCard(this, 'red', '${id}')">🟥</button>
+        <span class="counter-val" id="rf-${id}" data-fechas="1"
+          style="display:none;background:#7a1f1f;cursor:pointer;"
+          title="Fechas de suspensión — tocá para cambiar según el informe"
+          onclick="cycleFechas(event, '${id}')">1</span>
       </div>
       <div class="counter">
         <button class="jugo-btn" title="¿Jugó?"
@@ -1714,12 +1718,31 @@ function cycleCard(btn, type, id) {
     // red: toggle
     val = val === 1 ? 0 : 1;
     btn.dataset.val = val;
-    val > 0 ? btn.classList.add("active") : btn.classList.remove("active");
+    const fechasBadge = document.getElementById(`rf-${id}`);
+    if (val > 0) {
+      btn.classList.add("active");
+      fechasBadge.dataset.fechas = "1";
+      fechasBadge.textContent = "1";
+      fechasBadge.style.display = "flex";
+    } else {
+      btn.classList.remove("active");
+      fechasBadge.style.display = "none";
+    }
   }
   const row = document.getElementById(`row-${id}`);
   const hasCard = document.querySelector(`[data-id='${id}'].yellow`)?.dataset.val > 0
                || document.querySelector(`[data-id='${id}'].red`)?.dataset.val > 0;
   row.classList.toggle("has-card", !!hasCard);
+}
+
+// Tocar el numerito de fechas de suspensión (junto a la roja) lo hace ciclar
+// 1→2→3→4→5→1, para indicar la duración según el informe de la asociación.
+function cycleFechas(e, id) {
+  e.stopPropagation();
+  const badge = document.getElementById(`rf-${id}`);
+  const next = (parseInt(badge.dataset.fechas || 1) % 5) + 1;
+  badge.dataset.fechas = next;
+  badge.textContent = next;
 }
 
 function toggleJugo(btn) {
@@ -1759,9 +1782,11 @@ function collectData() {
       const amarillas = parseInt(document.querySelector(`.counter-btn.yellow[data-id='${id}']`)?.dataset.val || 0);
       const roja      = parseInt(document.querySelector(`.counter-btn.red[data-id='${id}']`)?.dataset.val || 0) > 0;
       const jugo      = document.querySelector(`.jugo-btn[data-id='${id}']`)?.dataset.jugo === "1";
+      // Fechas de suspensión elegidas junto a la roja (según informe de la asociación)
+      const fechas_susp = roja ? parseInt(document.getElementById(`rf-${id}`)?.dataset.fechas || 1) : null;
       // Incluir jugador si jugó O si tiene incidencias (por si se olvidaron de marcar jugó)
       if (jugo || goles > 0 || amarillas > 0 || roja) {
-        const entry = { jugador_id, nombre, goles, amarillas, roja, jugo };
+        const entry = { jugador_id, nombre, goles, amarillas, roja, jugo, fechas_susp };
         if (team === "local") {
           data.jugadoresLocal.push(entry);
         } else {
@@ -1808,7 +1833,7 @@ function showPreview() {
               <td>${esc(j.nombre)}</td>
               <td>${j.goles > 0 ? `<span class="badge-goal">${j.goles}</span>` : "–"}</td>
               <td>${j.amarillas > 0 ? `<span class="badge-yellow">${j.amarillas}</span>` : "–"}</td>
-              <td>${j.roja ? `<span class="badge-red">Sí</span>` : "–"}</td>
+              <td>${j.roja ? `<span class="badge-red">Sí (${j.fechas_susp} fecha${j.fechas_susp > 1 ? "s" : ""})</span>` : "–"}</td>
             </tr>`).join("")}
         </table>
       </div>`;
