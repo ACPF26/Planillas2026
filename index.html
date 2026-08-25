@@ -432,6 +432,42 @@
     padding: 0 2px;
   }
 
+  /* Fila de fechas de suspensión — aparece debajo del jugador al marcar roja */
+  .fechas-row {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    margin: -2px 0 5px;
+    background: #fff0f0;
+    border: 1.5px solid #ffd0d0;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #a02020;
+    font-family: 'Inter', sans-serif;
+  }
+  .fechas-row.show { display: flex; }
+  .fechas-btn {
+    width: 26px; height: 26px;
+    border: none;
+    border-radius: 6px;
+    background: var(--red);
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .fechas-num {
+    min-width: 20px;
+    text-align: center;
+    font-size: 15px;
+  }
+
   /* Cadetes add player */
   .add-player-row {
     display: flex;
@@ -1643,10 +1679,6 @@ function renderPlayerRow(container, player, idx, team) {
         <button class="counter-btn red" title="Roja"
           data-id="${id}" data-val="0"
           onclick="cycleCard(this, 'red', '${id}')">🟥</button>
-        <span class="counter-val" id="rf-${id}" data-fechas="1"
-          style="display:none;background:#7a1f1f;cursor:pointer;"
-          title="Fechas de suspensión — tocá para cambiar según el informe"
-          onclick="cycleFechas(event, '${id}')">1</span>
       </div>
       <div class="counter">
         <button class="jugo-btn" title="¿Jugó?"
@@ -1656,6 +1688,20 @@ function renderPlayerRow(container, player, idx, team) {
     `;
   }
   container.appendChild(row);
+
+  if (!suspendido) {
+    const fechasRow = document.createElement("div");
+    fechasRow.className = "fechas-row";
+    fechasRow.id = `fechasrow-${id}`;
+    fechasRow.innerHTML = `
+      🟥 Fechas de suspensión:
+      <button type="button" class="fechas-btn" onclick="ajustarFechas('${id}', -1)">−</button>
+      <span class="fechas-num" id="fechas-num-${id}" data-fechas="1">1</span>
+      <button type="button" class="fechas-btn" onclick="ajustarFechas('${id}', 1)">＋</button>
+      <span style="font-weight:400;color:#a02020;font-size:11px;">(según informe arbitral)</span>
+    `;
+    container.appendChild(fechasRow);
+  }
 }
 
 async function addPlayer(team, cat) {
@@ -1727,15 +1773,16 @@ function cycleCard(btn, type, id) {
     // red: toggle
     val = val === 1 ? 0 : 1;
     btn.dataset.val = val;
-    const fechasBadge = document.getElementById(`rf-${id}`);
+    const fechasRow = document.getElementById(`fechasrow-${id}`);
+    const fechasNum = document.getElementById(`fechas-num-${id}`);
     if (val > 0) {
       btn.classList.add("active");
-      fechasBadge.dataset.fechas = "1";
-      fechasBadge.textContent = "1";
-      fechasBadge.style.display = "flex";
+      fechasNum.textContent = "1";
+      fechasNum.dataset.fechas = "1";
+      fechasRow.classList.add("show");
     } else {
       btn.classList.remove("active");
-      fechasBadge.style.display = "none";
+      fechasRow.classList.remove("show");
     }
   }
   const row = document.getElementById(`row-${id}`);
@@ -1744,14 +1791,14 @@ function cycleCard(btn, type, id) {
   row.classList.toggle("has-card", !!hasCard);
 }
 
-// Tocar el numerito de fechas de suspensión (junto a la roja) lo hace ciclar
-// 1→2→3→4→5→1, para indicar la duración según el informe de la asociación.
-function cycleFechas(e, id) {
-  e.stopPropagation();
-  const badge = document.getElementById(`rf-${id}`);
-  const next = (parseInt(badge.dataset.fechas || 1) % 5) + 1;
-  badge.dataset.fechas = next;
-  badge.textContent = next;
+// Botones － / ＋ de la fila de fechas de suspensión (aparece al marcar roja).
+function ajustarFechas(id, delta) {
+  const span = document.getElementById(`fechas-num-${id}`);
+  let val = parseInt(span.dataset.fechas || span.textContent || 1) + delta;
+  if (val < 1) val = 1;
+  if (val > 10) val = 10;
+  span.textContent = val;
+  span.dataset.fechas = val;
 }
 
 function toggleJugo(btn) {
@@ -1792,7 +1839,7 @@ function collectData() {
       const roja      = parseInt(document.querySelector(`.counter-btn.red[data-id='${id}']`)?.dataset.val || 0) > 0;
       const jugo      = document.querySelector(`.jugo-btn[data-id='${id}']`)?.dataset.jugo === "1";
       // Fechas de suspensión elegidas junto a la roja (según informe de la asociación)
-      const fechas_susp = roja ? parseInt(document.getElementById(`rf-${id}`)?.dataset.fechas || 1) : null;
+      const fechas_susp = roja ? parseInt(document.getElementById(`fechas-num-${id}`)?.dataset.fechas || 1) : null;
       // Incluir jugador si jugó O si tiene incidencias (por si se olvidaron de marcar jugó)
       if (jugo || goles > 0 || amarillas > 0 || roja) {
         const entry = { jugador_id, nombre, goles, amarillas, roja, jugo, fechas_susp };
