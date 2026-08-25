@@ -229,6 +229,7 @@
   .form-group select,
   .form-group input[type="text"],
   .form-group input[type="number"],
+  .form-group input[type="date"],
   .form-group textarea {
     padding: 11px 14px;
     border: 2px solid var(--gray);
@@ -1042,9 +1043,10 @@
     </div>
     <div style="display:flex;gap:8px;padding:14px 16px 8px;overflow-x:auto;">
       <button class="stab active" onclick="selectAdminSec(this,'posiciones')">🏆 Posiciones</button>
-      <button class="stab" onclick="selectAdminSec(this,'goleadores')">⚽ Goleadores</button>
       <button class="stab" onclick="selectAdminSec(this,'fixture')">📅 Fixture</button>
       <button class="stab" onclick="selectAdminSec(this,'sanciones')">🟨🟥 Tarjetas / Suspensiones</button>
+      <button class="stab" onclick="selectAdminSec(this,'amarillas')">🟨 Amarillas</button>
+      <button class="stab" onclick="selectAdminSec(this,'goleadores')">⚽ Goleadores</button>
     </div>
     <div id="admin-content" style="padding:16px;">
       <div class="no-data">Cargando...</div>
@@ -2632,7 +2634,44 @@ async function renderAdminContent() {
     cont.innerHTML = await renderFixture(cat, true);
   } else if (adminSecActual === "sanciones") {
     cont.innerHTML = await renderSanciones(true);
+  } else if (adminSecActual === "amarillas") {
+    cont.innerHTML = await renderAmarillasAdmin(cat);
   }
+}
+
+// Amarillas de TODOS los clubes en una categoría (vista del admin).
+// Mismo criterio que la de cada club: solo lista a quien tiene amarillas
+// en la categoría elegida, y marca si además acumula en otra.
+async function renderAmarillasAdmin(cat) {
+  const { data } = await sb.from("acumulado_amarillas")
+    .select("nombre,club_id,total,en_suspension,cadetes,sub_20,reserva,primera,veteranos")
+    .order("total", { ascending: false });
+  const colDeCat = { "Cadetes": "cadetes", "Sub-20": "sub_20", "Reserva": "reserva", "Primera": "primera", "Veteranos": "veteranos" };
+  const colActual = colDeCat[cat];
+  const amarillas = (data || []).filter(a => a[colActual] > 0);
+  const otrasCatsDe = a => {
+    const partes = [];
+    if (cat !== "Cadetes" && a.cadetes > 0) partes.push("Cadetes");
+    if (cat !== "Sub-20" && a.sub_20 > 0) partes.push("Sub-20");
+    if (cat !== "Reserva" && a.reserva > 0) partes.push("Reserva");
+    if (cat !== "Primera" && a.primera > 0) partes.push("Primera");
+    if (cat !== "Veteranos" && a.veteranos > 0) partes.push("Veteranos");
+    return partes.join(", ");
+  };
+  if (!amarillas.length) {
+    return `<div class="cons-card"><h3>🟨 Amarillas — ${esc(cat)}</h3><div class="no-data">Sin amarillas en ${esc(cat)}.</div></div>`;
+  }
+  return `<div class="cons-card"><h3>🟨 Amarillas — ${esc(cat)}</h3>
+    <div class="table-scroll"><table class="cons-table" style="min-width:480px;">
+    <thead><tr><th>Jugador</th><th>Club</th><th style="width:56px;text-align:center;" title="Amarillas en esta categoría">${esc(cat)}</th><th style="width:56px;text-align:center;" title="Acumulado en todas las categorías">Total</th><th style="width:80px;text-align:center;">Estado</th></tr></thead>
+    <tbody>${amarillas.map(r => { const otras = otrasCatsDe(r); return `<tr>
+      <td style="font-weight:600">${esc(r.nombre)}${otras ? ` <span style="font-weight:400;color:#888;font-size:11px;">(+ en ${esc(otras)})</span>` : ""}</td>
+      <td>${esc(clubesCache[r.club_id] || "?")}</td>
+      <td style="text-align:center;font-weight:700;">${r[colActual]}</td>
+      <td style="text-align:center;font-weight:700;color:${r.total>=4?'#e03030':'#c49000'}">${r.total}</td>
+      <td style="text-align:center;">${r.en_suspension ? '🚫' : '—'}</td>
+    </tr>`; }).join("")}</tbody></table></div>
+  </div>`;
 }
 
 // ══════════════════════════════════
