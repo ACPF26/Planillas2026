@@ -825,6 +825,19 @@
   .vs-inc-row { font-size: 11px; padding: 2px 0; color: var(--text); font-family: Arial, sans-serif; }
   .vs-inc-row span { color: #888; font-size: 10px; }
 
+  /* ── Fixture: fechas colapsables ── */
+  .fecha-group { margin-bottom: 8px; }
+  .fecha-toggle {
+    display: flex; align-items: center; justify-content: space-between; width: 100%;
+    background: var(--gray); border: 1px solid #e0e5f7; border-radius: 10px;
+    padding: 10px 14px; font-family: Arial, sans-serif; font-size: 13px; font-weight: 700;
+    color: var(--blue); cursor: pointer;
+  }
+  .fecha-toggle .fecha-arrow { font-size: 11px; transition: transform 0.15s ease; }
+  .fecha-toggle.open .fecha-arrow { transform: rotate(90deg); }
+  .fecha-content { display: none; padding-top: 8px; }
+  .fecha-content.open { display: block; }
+
   .club-badge { width: 20px; height: 20px; object-fit: contain; vertical-align: middle;
                 margin-right: 7px; border-radius: 4px; background: white; }
   .admin-header {
@@ -2237,6 +2250,14 @@ function selectMiClubSec(btn, sec) {
 // ══════════════════════════════════
 // FIXTURE (compartido: admin editable / delegado solo lectura)
 // ══════════════════════════════════
+// Cada fecha arranca colapsada para evitar scroll largo; se abre solo la que se toca.
+function toggleFechaGroup(btn) {
+  const content = btn.nextElementSibling;
+  const abrir = !content.classList.contains("open");
+  content.classList.toggle("open", abrir);
+  btn.classList.toggle("open", abrir);
+}
+
 // Incidencias de un partido puntual del fixture (goles/amarillas/rojas por
 // jugador), colapsadas por defecto — se traen solo al abrir la tarjeta.
 async function toggleVsIncidencias(fixtureId, fechaNro, categoria, localId, visId, localNombre, visNombre) {
@@ -2317,47 +2338,56 @@ async function renderFixture(cat, editable) {
     return html;
   }
 
+  const porFecha = {};
+  rows.forEach(r => { (porFecha[r.fecha_nro] = porFecha[r.fecha_nro] || []).push(r); });
+  const fechas = Object.keys(porFecha).map(Number).sort((a, b) => a - b);
+
   if (!editable) {
-    html += rows.map(r => {
-      const localNombre = clubesCache[r.club_local_id] || "?";
-      const visNombre = clubesCache[r.club_visitante_id] || "?";
+    html += fechas.map(fecha => {
+      const cards = porFecha[fecha].map(r => {
+        const localNombre = clubesCache[r.club_local_id] || "?";
+        const visNombre = clubesCache[r.club_visitante_id] || "?";
+        return `
+        <div class="vs-card">
+          <div class="vs-card-row">
+            <div class="vs-team">
+              ${vsTeamEscudo(localNombre)}
+              <div class="vs-team-nombre">${esc(localNombre)}</div>
+            </div>
+            <div class="vs-versus">
+              <span class="vs-gol">${r.goles_local ?? "-"}</span>
+              <span class="vs-versus-label">VS</span>
+              <span class="vs-gol">${r.goles_visitante ?? "-"}</span>
+            </div>
+            <div class="vs-team">
+              ${vsTeamEscudo(visNombre)}
+              <div class="vs-team-nombre">${esc(visNombre)}</div>
+            </div>
+          </div>
+          <button class="vs-toggle" id="vsbtn-${r.id}"
+            onclick="toggleVsIncidencias('${r.id}', ${r.fecha_nro}, '${cat}', '${r.club_local_id}', '${r.club_visitante_id}', '${esc(localNombre).replace(/'/g, "\\'")}', '${esc(visNombre).replace(/'/g, "\\'")}')">
+            ▾ Incidencias
+          </button>
+          <div class="vs-incidencias" id="vsinc-${r.id}"></div>
+        </div>`;
+      }).join("");
       return `
-      <div class="vs-card">
-        <div class="vs-card-fecha">Fecha ${r.fecha_nro}</div>
-        <div class="vs-card-row">
-          <div class="vs-team">
-            ${vsTeamEscudo(localNombre)}
-            <div class="vs-team-nombre">${esc(localNombre)}</div>
-          </div>
-          <div class="vs-versus">
-            <span class="vs-gol">${r.goles_local ?? "-"}</span>
-            <span class="vs-versus-label">VS</span>
-            <span class="vs-gol">${r.goles_visitante ?? "-"}</span>
-          </div>
-          <div class="vs-team">
-            ${vsTeamEscudo(visNombre)}
-            <div class="vs-team-nombre">${esc(visNombre)}</div>
-          </div>
-        </div>
-        <button class="vs-toggle" id="vsbtn-${r.id}"
-          onclick="toggleVsIncidencias('${r.id}', ${r.fecha_nro}, '${cat}', '${r.club_local_id}', '${r.club_visitante_id}', '${esc(localNombre).replace(/'/g, "\\'")}', '${esc(visNombre).replace(/'/g, "\\'")}')">
-          ▾ Incidencias
+      <div class="fecha-group">
+        <button class="fecha-toggle" onclick="toggleFechaGroup(this)">
+          <span>📅 Fecha ${fecha}</span><span class="fecha-arrow">▸</span>
         </button>
-        <div class="vs-incidencias" id="vsinc-${r.id}"></div>
+        <div class="fecha-content">${cards}</div>
       </div>`;
     }).join("");
     html += `</div>`;
     return html;
   }
 
-  html += `<div class="table-scroll"><table class="cons-table" style="min-width:420px;">
-    <thead><tr><th>Fecha</th><th>Partido</th><th style="text-align:center;">Resultado</th><th>Estado</th><th></th></tr></thead>
-    <tbody>
-    ${rows.map(r => {
+  html += fechas.map(fecha => {
+    const rowsHtml = porFecha[fecha].map(r => {
       const localNombre = clubesCache[r.club_local_id] || "?";
       const visNombre = clubesCache[r.club_visitante_id] || "?";
       return `<tr class="edit-row">
-        <td>Fecha ${r.fecha_nro}</td>
         <td>${esc(localNombre)} <span style="color:#888;">vs</span> ${esc(visNombre)}</td>
         <td style="text-align:center;white-space:nowrap;">
           <input type="number" id="fx-gl-${r.id}" value="${r.goles_local ?? ""}" min="0"> - <input type="number" id="fx-gv-${r.id}" value="${r.goles_visitante ?? ""}" min="0">
@@ -2374,9 +2404,21 @@ async function renderFixture(cat, editable) {
           ${r.estado === "Jugado" ? `<button class="btn-mini" style="background:#555;" onclick="probarAvisoMail(${r.fecha_nro}, '${cat}', '${r.club_local_id}', '${r.club_visitante_id}')" title="Manda un mail de PRUEBA (solo a la casilla de prueba configurada, nunca a delegados)">✉️ Probar</button>` : ""}
         </td>
       </tr>`;
-    }).join("")}
-    </tbody>
-  </table></div></div>`;
+    }).join("");
+    return `
+    <div class="fecha-group">
+      <button class="fecha-toggle" onclick="toggleFechaGroup(this)">
+        <span>📅 Fecha ${fecha}</span><span class="fecha-arrow">▸</span>
+      </button>
+      <div class="fecha-content">
+        <div class="table-scroll"><table class="cons-table" style="min-width:380px;">
+          <thead><tr><th>Partido</th><th style="text-align:center;">Resultado</th><th>Estado</th><th></th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table></div>
+      </div>
+    </div>`;
+  }).join("");
+  html += `</div>`;
   return html;
 }
 
