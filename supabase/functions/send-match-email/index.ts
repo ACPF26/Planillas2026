@@ -12,6 +12,8 @@
 //   TEST_EMAIL_TO         mientras se prueba: A QUIÉN llega en vez de a los
 //                         delegados reales. Sacar/vaciar esta variable el día
 //                         que se quiera enviar a los delegados de verdad.
+//   APP_URL (opcional)    URL del botón "Ingresar a la app" al pie del mail.
+//                         Si no se carga, usa la de GitHub Pages actual.
 // (SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta Supabase solo,
 //  no hace falta cargarlos a mano.)
 // ══════════════════════════════════════════════════════════════
@@ -23,6 +25,11 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// URL de acceso a la app, para el botón al pie del mail. Se puede
+// sobreescribir con el secret APP_URL (por ejemplo, el día que se
+// transfiera el repo a la cuenta de la ACPF) sin tocar este código.
+const APP_URL = Deno.env.get("APP_URL") || "https://nicolasr1990.github.io/Planillas2026/";
 
 function esc(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
@@ -72,6 +79,9 @@ function construirHtml(partido: any, localNombre: string, visNombre: string, inc
       ${tablaIncidencias(localNombre, incidenciasLocal)}
       ${tablaIncidencias(visNombre, incidenciasVisitante)}
       ${partido.observacion ? `<p style="margin-top:20px;font-size:13px;"><strong>Observación:</strong> ${esc(partido.observacion)}</p>` : ""}
+      <div style="text-align:center;margin-top:26px;">
+        <a href="${APP_URL}" style="display:inline-block;background:#1a3fcc;color:white;text-decoration:none;font-weight:bold;font-size:14px;padding:12px 28px;border-radius:8px;">👉 Ingresar a la app</a>
+      </div>
     </div>
     <div style="padding:14px 24px;border-top:1px solid #eee;font-size:11px;color:#999;background:white;border-radius:0 0 10px 10px;">
       Sistema ACPF — este correo se generó automáticamente al cargar la planilla.
