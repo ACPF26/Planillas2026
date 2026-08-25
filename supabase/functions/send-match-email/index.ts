@@ -162,45 +162,58 @@ Deno.serve(async (req) => {
     const incLocal = (incidencias || []).filter((i: any) => i.club_id === partido.club_local_id);
     const incVis = (incidencias || []).filter((i: any) => i.club_id === partido.club_visitante_id);
 
-    // Suspensiones nuevas generadas por este partido puntual (roja directa,
-    // doble amarilla, o quinta amarilla acumulada). Se identifican por
-    // fecha_inicio = fecha del partido + 1, misma categoría y alguno de los
-    // dos clubes — es exacto porque cargar_partido siempre las crea así.
-    const { data: sancionesRaw } = await supabase
-      .from("sanciones")
-      .select("tipo,fecha_inicio,fechas_a_cumplir,club_id,jugadores(nombre)")
-      .eq("fecha_inicio", partido.fecha_nro + 1)
-      .eq("categoria", partido.categoria)
-      .in("club_id", [partido.club_local_id, partido.club_visitante_id])
-      .eq("estado", "Vigente");
+    // Suspensiones nuevas + aviso de "4 amarillas". Todo esto es contenido
+    // extra del mail: si algo falla acá, no debe voltear el envío del mail
+    // en sí — se loguea el error y se manda igual, solo sin esos recuadros.
+    let suspensiones: any[] = [];
+    let avisos4Amarillas: any[] = [];
+    try {
+      // Suspensiones nuevas generadas por este partido puntual (roja directa,
+      // doble amarilla, o quinta amarilla acumulada). Se identifican por
+      // fecha_inicio = fecha del partido + 1, misma categoría y alguno de los
+      // dos clubes — es exacto porque cargar_partido siempre las crea así.
+      const { data: sancionesRaw } = await supabase
+        .from("sanciones")
+        .select("tipo,fecha_inicio,fechas_a_cumplir,club_id,jugadores(nombre)")
+        .eq("fecha_inicio", partido.fecha_nro + 1)
+        .eq("categoria", partido.categoria)
+        .in("club_id", [partido.club_local_id, partido.club_visitante_id])
+        .eq("estado", "Vigente");
 
-    const suspensiones = (sancionesRaw || []).map((s: any) => ({
-      jugador: s.jugadores?.nombre || "",
-      club: s.club_id === partido.club_local_id ? localNombre : visNombre,
-      tipo: s.tipo,
-      fecha_inicio: s.fecha_inicio,
-      fechas_a_cumplir: s.fechas_a_cumplir,
-    }));
+      suspensiones = (sancionesRaw || []).map((s: any) => ({
+        jugador: s.jugadores?.nombre || "",
+        club: s.club_id === partido.club_local_id ? localNombre : visNombre,
+        tipo: s.tipo,
+        fecha_inicio: s.fecha_inicio,
+        fechas_a_cumplir: s.fechas_a_cumplir,
+      }));
 
-    // Aviso de "4 amarillas" — solo para quienes sumaron una amarilla en
-    // ESTE partido y quedaron justo en 4 (todavía no suspendidos).
-    const conAmarilla = (incidencias || []).filter((i: any) => i.amarillas > 0);
-    const avisos4Amarillas: any[] = [];
-    for (const inc of conAmarilla) {
-      const nombre = (inc as any).jugadores?.nombre;
-      if (!nombre) continue;
-      const { data: acumRow } = await supabase
-        .from("acumulado_amarillas")
-        .select("total,en_suspension")
-        .eq("nombre", nombre)
-        .eq("club_id", inc.club_id)
-        .maybeSingle();
-      if (acumRow && acumRow.total === 4 && !acumRow.en_suspension) {
-        avisos4Amarillas.push({
-          nombre,
-          club: inc.club_id === partido.club_local_id ? localNombre : visNombre,
-        });
+      // Aviso de "4 amarillas" — solo para quienes sumaron una amarilla en
+      // ESTE partido y quedaron justo en 4 (todavía no suspendidos).
+      // Una sola consulta para los dos clubes (antes era una por jugador,
+      // lo que con varios amonestados hacía que la función tardara de más
+      // y la conexión se cortara antes de responder).
+      const conAmarilla = (incidencias || []).filter((i: any) => i.amarillas > 0);
+      if (conAmarilla.length) {
+        const { data: acumAll } = await supabase
+          .from("acumulado_amarillas")
+          .select("nombre,club_id,total,en_suspension")
+          .in("club_id", [partido.club_local_id, partido.club_visitante_id]);
+
+        for (const inc of conAmarilla) {
+          const nombre = (inc as any).jugadores?.nombre;
+          if (!nombre) continue;
+          const acumRow = (acumAll || []).find((a: any) => a.nombre === nombre && a.club_id === inc.club_id);
+          if (acumRow && acumRow.total === 4 && !acumRow.en_suspension) {
+            avisos4Amarillas.push({
+              nombre,
+              club: inc.club_id === partido.club_local_id ? localNombre : visNombre,
+            });
+          }
+        }
       }
+    } catch (err) {
+      console.error("No se pudieron armar suspensiones/avisos, se manda el mail sin esa parte:", err);
     }
 
     // denomailer tiene un bug conocido: al codificar en quoted-printable,
