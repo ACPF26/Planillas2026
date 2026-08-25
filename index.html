@@ -1044,7 +1044,7 @@
     <div style="display:flex;gap:8px;padding:14px 16px 8px;overflow-x:auto;">
       <button class="stab active" onclick="selectAdminSec(this,'posiciones')">🏆 Posiciones</button>
       <button class="stab" onclick="selectAdminSec(this,'fixture')">📅 Fixture</button>
-      <button class="stab" onclick="selectAdminSec(this,'sanciones')">🟨🟥 Tarjetas / Suspensiones</button>
+      <button class="stab" onclick="selectAdminSec(this,'sanciones')">🚫 Suspensiones</button>
       <button class="stab" onclick="selectAdminSec(this,'amarillas')">🟨 Amarillas</button>
       <button class="stab" onclick="selectAdminSec(this,'goleadores')">⚽ Goleadores</button>
     </div>
@@ -2541,11 +2541,11 @@ async function renderSanciones(editable) {
   if (error) { console.error(error); return `<div class="no-data">Error al cargar sanciones.</div>`; }
   const rows = data || [];
   if (!rows.length) {
-    return `<div class="cons-card"><h3>🟨🟥 Tarjetas / Suspensiones — todas las categorías</h3><div class="no-data">Sin sanciones registradas.</div></div>`;
+    return `<div class="cons-card"><h3>🚫 Suspensiones — todas las categorías</h3><div class="no-data">Sin sanciones registradas.</div></div>`;
   }
   return `
   <div class="cons-card">
-    <h3>🟨🟥 Tarjetas / Suspensiones — todas las categorías</h3>
+    <h3>🚫 Suspensiones — todas las categorías</h3>
     <div class="table-scroll"><table class="cons-table" style="min-width:620px;">
       <thead><tr><th>Jugador</th><th>Club</th><th>Categoría</th><th>Tipo</th><th style="text-align:center;">Desde</th><th style="text-align:center;">Fechas</th><th>Estado</th>${editable ? "<th></th>" : ""}</tr></thead>
       <tbody>

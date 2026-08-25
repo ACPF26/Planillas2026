@@ -37,7 +37,15 @@ function esc(s: unknown): string {
   );
 }
 
-function construirHtml(partido: any, localNombre: string, visNombre: string, incidenciasLocal: any[], incidenciasVisitante: any[]) {
+function construirHtml(
+  partido: any,
+  localNombre: string,
+  visNombre: string,
+  incidenciasLocal: any[],
+  incidenciasVisitante: any[],
+  suspensiones: any[],
+  avisos4Amarillas: any[]
+) {
   const tablaIncidencias = (nombreClub: string, filas: any[]) => {
     const conDatos = filas.filter((j) => j.goles > 0 || j.amarillas > 0 || j.roja);
     if (!conDatos.length) return "";
@@ -79,8 +87,43 @@ function construirHtml(partido: any, localNombre: string, visNombre: string, inc
       ${tablaIncidencias(localNombre, incidenciasLocal)}
       ${tablaIncidencias(visNombre, incidenciasVisitante)}
       ${partido.observacion ? `<p style="margin-top:20px;font-size:13px;"><strong>Observación:</strong> ${esc(partido.observacion)}</p>` : ""}
+      ${
+        suspensiones.length
+          ? `
+      <div style="background:#fff0f0;border:1px solid #ffd0d0;border-radius:8px;padding:14px 16px;margin-top:20px;">
+        <h3 style="color:#e03030;margin:0 0 10px;font-family:Arial,sans-serif;font-size:15px;">⚠️ Nuevas suspensiones</h3>
+        ${suspensiones
+          .map(
+            (s) => `
+        <div style="font-size:13px;padding:5px 0;border-bottom:1px solid #ffe0e0;">
+          <strong>${esc(s.jugador)}</strong> (${esc(s.club)}) — le corresponden <strong>${s.fechas_a_cumplir} fecha${s.fechas_a_cumplir > 1 ? "s" : ""}</strong> de suspensión
+          ${s.tipo === "Roja" ? "según informe arbitral" : "por acumulación de 5 amarillas"},
+          desde la Fecha ${s.fecha_inicio}.
+        </div>`
+          )
+          .join("")}
+      </div>`
+          : ""
+      }
+      ${
+        avisos4Amarillas.length
+          ? `
+      <div style="background:#fffbea;border:1px solid #f5c518;border-radius:8px;padding:14px 16px;margin-top:14px;">
+        <h3 style="color:#946200;margin:0 0 10px;font-family:Arial,sans-serif;font-size:15px;">🟨 A un paso de la suspensión</h3>
+        ${avisos4Amarillas
+          .map(
+            (a) => `
+        <div style="font-size:13px;padding:5px 0;border-bottom:1px solid #fbeec2;">
+          <strong>${esc(a.nombre)}</strong> (${esc(a.club)}) llegó a <strong>4 amarillas acumuladas</strong> — una más y queda suspendido.
+        </div>`
+          )
+          .join("")}
+      </div>`
+          : ""
+      }
       <div style="text-align:center;margin-top:26px;">
         <a href="${APP_URL}" style="display:inline-block;background:#1a3fcc;color:white;text-decoration:none;font-weight:bold;font-size:14px;padding:12px 28px;border-radius:8px;">👉 Ingresar a la app</a>
+        <p style="font-size:11px;color:#999;margin-top:10px;">Ingresá con tu correo y la contraseña que te dio la ACPF.</p>
       </div>
     </div>
     <div style="padding:14px 24px;border-top:1px solid #eee;font-size:11px;color:#999;background:white;border-radius:0 0 10px 10px;">
@@ -119,13 +162,56 @@ Deno.serve(async (req) => {
     const incLocal = (incidencias || []).filter((i: any) => i.club_id === partido.club_local_id);
     const incVis = (incidencias || []).filter((i: any) => i.club_id === partido.club_visitante_id);
 
+    // Suspensiones nuevas generadas por este partido puntual (roja directa,
+    // doble amarilla, o quinta amarilla acumulada). Se identifican por
+    // fecha_inicio = fecha del partido + 1, misma categoría y alguno de los
+    // dos clubes — es exacto porque cargar_partido siempre las crea así.
+    const { data: sancionesRaw } = await supabase
+      .from("sanciones")
+      .select("tipo,fecha_inicio,fechas_a_cumplir,club_id,jugadores(nombre)")
+      .eq("fecha_inicio", partido.fecha_nro + 1)
+      .eq("categoria", partido.categoria)
+      .in("club_id", [partido.club_local_id, partido.club_visitante_id])
+      .eq("estado", "Vigente");
+
+    const suspensiones = (sancionesRaw || []).map((s: any) => ({
+      jugador: s.jugadores?.nombre || "",
+      club: s.club_id === partido.club_local_id ? localNombre : visNombre,
+      tipo: s.tipo,
+      fecha_inicio: s.fecha_inicio,
+      fechas_a_cumplir: s.fechas_a_cumplir,
+    }));
+
+    // Aviso de "4 amarillas" — solo para quienes sumaron una amarilla en
+    // ESTE partido y quedaron justo en 4 (todavía no suspendidos).
+    const conAmarilla = (incidencias || []).filter((i: any) => i.amarillas > 0);
+    const avisos4Amarillas: any[] = [];
+    for (const inc of conAmarilla) {
+      const nombre = (inc as any).jugadores?.nombre;
+      if (!nombre) continue;
+      const { data: acumRow } = await supabase
+        .from("acumulado_amarillas")
+        .select("total,en_suspension")
+        .eq("nombre", nombre)
+        .eq("club_id", inc.club_id)
+        .maybeSingle();
+      if (acumRow && acumRow.total === 4 && !acumRow.en_suspension) {
+        avisos4Amarillas.push({
+          nombre,
+          club: inc.club_id === partido.club_local_id ? localNombre : visNombre,
+        });
+      }
+    }
+
     // denomailer tiene un bug conocido: al codificar en quoted-printable,
     // cualquier espacio justo antes de un salto de línea queda mal
     // codificado y aparece como texto literal "=20" en el mail recibido.
     // Sacando los saltos de línea del HTML antes de mandarlo, ese patrón
     // nunca aparece (el resultado visual no cambia — los navegadores/
     // clientes de mail ya colapsan espacios en blanco al renderizar HTML).
-    const html = construirHtml(partido, localNombre, visNombre, incLocal, incVis).replace(/\s+/g, " ").trim();
+    const html = construirHtml(partido, localNombre, visNombre, incLocal, incVis, suspensiones, avisos4Amarillas)
+      .replace(/\s+/g, " ")
+      .trim();
 
     const testTo = Deno.env.get("TEST_EMAIL_TO");
     const destinatario = testTo || Deno.env.get("GMAIL_USER")!; // nunca se manda a delegados sin querer
