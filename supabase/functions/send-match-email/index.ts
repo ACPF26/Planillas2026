@@ -29,7 +29,7 @@ const corsHeaders = {
 // URL de acceso a la app, para el botón al pie del mail. Se puede
 // sobreescribir con el secret APP_URL (por ejemplo, el día que se
 // transfiera el repo a la cuenta de la ACPF) sin tocar este código.
-const APP_URL = Deno.env.get("APP_URL") || "https://nicolasr1990.github.io/Planillas2026/";
+const APP_URL = Deno.env.get("APP_URL") || "https://acpf26.github.io/Planillas2026/";
 
 function esc(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
