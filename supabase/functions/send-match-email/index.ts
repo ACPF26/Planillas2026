@@ -21,8 +21,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
+// Solo la app publicada puede llamar a esta función desde un navegador
+// (capa extra además del chequeo de admin de más abajo — ese es el que
+// realmente importa, esto solo reduce quién puede ni siquiera intentarlo).
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://acpf26.github.io",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -139,10 +142,41 @@ Deno.serve(async (req) => {
     const { partido_id } = await req.json();
     if (!partido_id) throw new Error("Falta partido_id");
 
+    // Solo un admin logueado puede disparar este envío. La anon key sola
+    // (pública, visible en el código del navegador) NO alcanza — sin este
+    // chequeo, cualquiera con esa clave y un id de partido (también público)
+    // podría mandar mails las veces que quiera.
+    const authHeader = req.headers.get("Authorization") || "";
+    const jwt = authHeader.replace(/^Bearer\s+/i, "");
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: userData, error: userErr } = await supabaseAuth.auth.getUser(jwt);
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ ok: false, error: "No autenticado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    const { data: perfil } = await supabase
+      .from("perfiles")
+      .select("rol")
+      .eq("id", userData.user.id)
+      .single();
+    if (!perfil || perfil.rol !== "admin") {
+      return new Response(JSON.stringify({ ok: false, error: "Solo el admin puede enviar este aviso" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { data: partido, error: errPartido } = await supabase
       .from("partidos")
