@@ -497,6 +497,75 @@
     cursor: pointer;
   }
 
+  /* ── CAMBIOS ── */
+  .cambios-section {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 2px dashed var(--gray);
+  }
+  .cambios-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .cambio-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: #f8faff;
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 6px;
+  }
+  .cambio-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+  }
+  .cambio-row select {
+    flex: 1;
+    min-width: 120px;
+    padding: 6px 8px;
+    border: 2px solid var(--gray);
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+  }
+  .cambio-row input.cambio-minuto {
+    width: 48px;
+    padding: 6px 4px;
+    border: 2px solid var(--gray);
+    border-radius: 6px;
+    font-size: 12px;
+    text-align: center;
+    outline: none;
+  }
+  .cambio-quitar {
+    background: none;
+    border: none;
+    color: var(--red);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0 4px;
+  }
+  .btn-add-cambio {
+    padding: 8px 14px;
+    background: none;
+    border: 2px dashed var(--blue);
+    color: var(--blue);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+  }
+
   /* ── OBSERVACION ── */
   .obs-section { margin-top: 20px; }
 
@@ -1168,6 +1237,28 @@
 
         <div class="form-row">
           <div class="form-group">
+            <label>Juez de línea N°1 (opcional)</label>
+            <input type="text" id="juez-linea-1" placeholder="Nombre...">
+          </div>
+          <div class="form-group">
+            <label>Juez de línea N°2 (opcional)</label>
+            <input type="text" id="juez-linea-2" placeholder="Nombre...">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Cuarto árbitro (opcional)</label>
+            <input type="text" id="cuarto-arbitro" placeholder="Nombre...">
+          </div>
+          <div class="form-group">
+            <label>Personal técnico autorizado (opcional)</label>
+            <textarea id="personal-tecnico" rows="2" placeholder="Un nombre por línea (hasta 4)"></textarea>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
             <label>Equipo 1</label>
             <select id="club-local" onchange="onClubChange()">
               <option value="">Seleccionar club...</option>
@@ -1656,7 +1747,7 @@ async function buildTeamSection(clubId, team, cat) {
       <div style="font-size:9px;color:#9ca3af;text-align:center;">⚽</div>
       <div style="font-size:9px;color:#9ca3af;text-align:center;">🟨</div>
       <div style="font-size:9px;color:#9ca3af;text-align:center;">🟥</div>
-      <div style="font-size:9px;color:#18b85a;text-align:center;font-weight:700;">✓JUG</div>
+      <div style="font-size:9px;color:#18b85a;text-align:center;font-weight:700;">✓FIRMÓ</div>
     </div>
     <div id="players-${team}"></div>
     ${cat === "Cadetes" ? `
@@ -1664,10 +1755,18 @@ async function buildTeamSection(clubId, team, cat) {
       <input type="text" id="new-player-${team}" placeholder="Apellido, Nombre...">
       <button onclick="addPlayer('${team}', '${cat}')">+ Agregar</button>
     </div>` : ""}
+
+    <div class="cambios-section">
+      <div class="cambios-title">🔄 Cambios</div>
+      <div id="cambios-${team}"></div>
+      <button type="button" class="btn-add-cambio" onclick="agregarCambio('${team}')">+ Agregar cambio</button>
+    </div>
   `;
 
   const container = div.querySelector(`#players-${team}`);
   players.forEach((p, i) => renderPlayerRow(container, p, i, team, dupDni[p.dni]));
+
+  (team === "local" ? state.local : state.visitante).plantel = players;
 
   return div;
 }
@@ -1723,7 +1822,7 @@ function renderPlayerRow(container, player, idx, team, otrosClubes) {
           onclick="cycleCard(this, 'red', '${id}')">🟥</button>
       </div>
       <div class="counter">
-        <button class="jugo-btn" title="¿Jugó?"
+        <button class="jugo-btn" title="¿Firmó?"
           data-id="${id}" data-jugo="0"
           onclick="toggleJugo(this)">✓</button>
       </div>
@@ -1769,6 +1868,53 @@ async function addPlayer(team, cat) {
   renderPlayerRow(container, data, idx, team);
   input.value = "";
   showToast(`${name} agregado`, "success");
+  // Si se agregó un jugador de Cadetes, también entra como opción en los cambios
+  (team === "local" ? state.local : state.visitante).plantel.push(data);
+  document.querySelectorAll(`#cambios-${team} .cambio-row`).forEach(row => {
+    [row.querySelector(".cambio-sale"), row.querySelector(".cambio-entra")].forEach(sel => {
+      const o = document.createElement("option");
+      o.value = data.id; o.textContent = data.nombre;
+      sel.appendChild(o);
+    });
+  });
+}
+
+// ══════════════════════════════════
+// CAMBIOS (sustituciones)
+// ══════════════════════════════════
+let cambioSeq = 0;
+
+function agregarCambio(team) {
+  const plantel = (team === "local" ? state.local : state.visitante).plantel || [];
+  const cont = document.getElementById(`cambios-${team}`);
+  const cid = `cambio-${team}-${cambioSeq++}`;
+  const opciones = plantel.map(p => `<option value="${p.id}">${esc(p.nombre)}</option>`).join("");
+
+  const row = document.createElement("div");
+  row.className = "cambio-row";
+  row.id = cid;
+  row.innerHTML = `
+    <span class="cambio-label">Sale</span>
+    <select class="cambio-sale"><option value="">Jugador...</option>${opciones}</select>
+    <span class="cambio-label">Entra</span>
+    <select class="cambio-entra"><option value="">Jugador...</option>${opciones}</select>
+    <span class="cambio-label">Min.</span>
+    <input type="number" class="cambio-minuto" min="0" max="120" placeholder="'">
+    <button type="button" class="cambio-quitar" onclick="document.getElementById('${cid}').remove()">✕</button>
+  `;
+  cont.appendChild(row);
+}
+
+function leerCambios(team) {
+  const plantel = (team === "local" ? state.local : state.visitante).plantel || [];
+  const porId = Object.fromEntries(plantel.map(p => [p.id, p.nombre]));
+  const rows = [...document.querySelectorAll(`#cambios-${team} .cambio-row`)];
+  return rows.map(row => {
+    const sale   = row.querySelector(".cambio-sale").value;
+    const entra  = row.querySelector(".cambio-entra").value;
+    const minuto = row.querySelector(".cambio-minuto").value;
+    return { sale, entra, minuto, saleNombre: porId[sale] || "", entraNombre: porId[entra] || "" };
+  }).filter(c => c.sale && c.entra);
 }
 
 // ══════════════════════════════════
@@ -1859,12 +2005,18 @@ function collectData() {
     fechaCal: document.getElementById("fecha-cal").value,
     categoria: document.getElementById("categoria").value,
     arbitro: document.getElementById("arbitro").value,
+    juezLinea1: document.getElementById("juez-linea-1").value,
+    juezLinea2: document.getElementById("juez-linea-2").value,
+    cuartoArbitro: document.getElementById("cuarto-arbitro").value,
+    personalTecnico: document.getElementById("personal-tecnico").value,
     localId, visitanteId,
     local: clubesCache[localId],
     visitante: clubesCache[visitanteId],
     observacion: document.getElementById("observacion").value,
     jugadoresLocal: [],
     jugadoresVisitante: [],
+    cambiosLocal: leerCambios("local"),
+    cambiosVisitante: leerCambios("visitante"),
     golesLocal: 0,
     golesVisitante: 0
   };
@@ -1913,6 +2065,8 @@ function showPreview() {
         <tr><td><b>Fecha calendario</b></td><td>${d.fechaCal}</td></tr>
         <tr><td><b>Categoría</b></td><td>${d.categoria}</td></tr>
         <tr><td><b>Árbitro</b></td><td>${d.arbitro || "–"}</td></tr>
+        <tr><td><b>Jueces de línea</b></td><td>${[d.juezLinea1, d.juezLinea2].filter(Boolean).join(" / ") || "–"}</td></tr>
+        <tr><td><b>Cuarto árbitro</b></td><td>${d.cuartoArbitro || "–"}</td></tr>
         <tr><td><b>Resultado</b></td><td><b>${esc(d.local)} ${d.golesLocal} – ${d.golesVisitante} ${esc(d.visitante)}</b></td></tr>
       </table>
     </div>`;
@@ -1937,6 +2091,30 @@ function showPreview() {
       </div>`;
     }
   });
+
+  ["local", "visitante"].forEach(team => {
+    const cambios = team === "local" ? d.cambiosLocal : d.cambiosVisitante;
+    const club = team === "local" ? d.local : d.visitante;
+    if (cambios.length > 0) {
+      html += `
+      <div class="preview-section">
+        <h4>${esc(club)} – Cambios</h4>
+        <table class="preview-table">
+          <tr><th>Sale</th><th>Entra</th><th>Minuto</th></tr>
+          ${cambios.map(c => `
+            <tr>
+              <td>${esc(c.saleNombre)}</td>
+              <td>${esc(c.entraNombre)}</td>
+              <td>${c.minuto || "–"}</td>
+            </tr>`).join("")}
+        </table>
+      </div>`;
+    }
+  });
+
+  if (d.personalTecnico) {
+    html += `<div class="preview-section"><h4>Personal técnico autorizado</h4><p style="font-size:13px;color:#374151;white-space:pre-line;">${esc(d.personalTecnico)}</p></div>`;
+  }
 
   if (d.observacion) {
     html += `<div class="preview-section"><h4>Observación</h4><p style="font-size:13px;color:#374151;">${esc(d.observacion)}</p></div>`;
@@ -1970,9 +2148,15 @@ async function submitPlanilla() {
     goles_local: d.golesLocal,
     goles_visitante: d.golesVisitante,
     arbitro: d.arbitro,
+    juez_linea_1: d.juezLinea1,
+    juez_linea_2: d.juezLinea2,
+    cuarto_arbitro: d.cuartoArbitro,
+    personal_tecnico: d.personalTecnico,
     observacion: d.observacion,
     jugadores_local: d.jugadoresLocal,
-    jugadores_visitante: d.jugadoresVisitante
+    jugadores_visitante: d.jugadoresVisitante,
+    cambios_local: d.cambiosLocal,
+    cambios_visitante: d.cambiosVisitante
   };
 
   const { data: resultado, error } = await sb.rpc("cargar_partido", { payload });
