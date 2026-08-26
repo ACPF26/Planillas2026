@@ -1083,6 +1083,7 @@
       <button class="stab" onclick="selectAdminSec(this,'sanciones')">🚫 Suspensiones</button>
       <button class="stab" onclick="selectAdminSec(this,'amarillas')">🟨 Amarillas</button>
       <button class="stab" onclick="selectAdminSec(this,'goleadores')">⚽ Goleadores</button>
+      <button class="stab" onclick="selectAdminSec(this,'jugadores')">👥 Jugadores</button>
     </div>
     <div id="admin-content" style="padding:16px;">
       <div class="no-data">Cargando...</div>
@@ -2683,7 +2684,102 @@ async function renderAdminContent() {
     cont.innerHTML = await renderSanciones(true);
   } else if (adminSecActual === "amarillas") {
     cont.innerHTML = await renderAmarillasAdmin(cat);
+  } else if (adminSecActual === "jugadores") {
+    cont.innerHTML = await renderJugadoresAdmin(cat);
   }
+}
+
+// ══════════════════════════════════
+// JUGADORES (admin — alta, edición de nombre, activar/desactivar)
+// ══════════════════════════════════
+let adminJugadoresClub = null;
+
+async function renderJugadoresAdmin(cat) {
+  await ensureClubes();
+  const nombresOrdenados = Object.keys(clubesPorNombre).sort((a, b) => a.localeCompare(b, "es"));
+  if (!adminJugadoresClub) adminJugadoresClub = clubesPorNombre[nombresOrdenados[0]];
+
+  const opciones = nombresOrdenados
+    .map(n => `<option value="${clubesPorNombre[n]}" ${clubesPorNombre[n] === adminJugadoresClub ? "selected" : ""}>${esc(n)}</option>`)
+    .join("");
+
+  const { data: jugadoresData, error } = await sb.from("jugadores")
+    .select("id,nombre,activo")
+    .eq("club_id", adminJugadoresClub)
+    .eq("categoria", cat)
+    .order("nombre");
+  if (error) return `<div class="no-data">Error al cargar el plantel.</div>`;
+  const jugadores = jugadoresData || [];
+
+  return `
+  <div class="cons-card">
+    <h3>👥 Jugadores — ${esc(cat)}</h3>
+    <div class="add-fixture-form">
+      <select id="jug-club-select" onchange="cambiarClubJugadores(this.value)">${opciones}</select>
+    </div>
+    ${jugadores.length ? `
+    <table class="cons-table" style="width:100%;">
+      <thead><tr><th>#</th><th>Jugador</th><th style="width:76px;"></th></tr></thead>
+      <tbody>${jugadores.map((p, i) => `
+        <tr id="jugrow-${p.id}">
+          <td class="rank">${i + 1}</td>
+          <td id="jugnombre-${p.id}" style="${p.activo ? "" : "opacity:0.5;"}">${esc(p.nombre)}${p.activo ? "" : ` <span style="color:#999;font-size:11px;">(inactivo)</span>`}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn-mini" onclick="editarJugadorNombre('${p.id}')" title="Editar nombre">✏️</button>
+            <button class="btn-mini danger" onclick="toggleActivoJugador('${p.id}', ${p.activo})" title="${p.activo ? "Desactivar" : "Reactivar"}">${p.activo ? "🚫" : "↩️"}</button>
+          </td>
+        </tr>`).join("")}
+      </tbody>
+    </table>` : `<div class="no-data" style="padding:16px;">Sin jugadores cargados en ${esc(cat)} para este club.</div>`}
+    <div class="add-fixture-form">
+      <input type="text" id="nuevo-jugador-nombre" placeholder="Apellido, Nombre..." style="flex:1;">
+      <button class="btn-mini" onclick="agregarJugadorAdmin('${cat}')">+ Agregar</button>
+    </div>
+  </div>`;
+}
+
+function cambiarClubJugadores(clubId) {
+  adminJugadoresClub = clubId;
+  renderAdminContent();
+}
+
+function editarJugadorNombre(id) {
+  const cell = document.getElementById(`jugnombre-${id}`);
+  const actual = cell.textContent.replace(/\s*\(inactivo\)\s*$/, "").trim();
+  cell.innerHTML = `<input type="text" id="juginput-${id}" value="${esc(actual)}" style="width:100%;padding:5px 8px;border:1.5px solid #d0d8ff;border-radius:6px;font-size:13px;">`;
+  const row = document.getElementById(`jugrow-${id}`);
+  row.children[2].innerHTML = `<button class="btn-mini" onclick="guardarJugadorNombre('${id}')">💾</button>`;
+}
+
+async function guardarJugadorNombre(id) {
+  const input = document.getElementById(`juginput-${id}`);
+  const nuevoNombre = input.value.trim();
+  if (!nuevoNombre) { showToast("El nombre no puede quedar vacío", "error"); return; }
+  const { error } = await sb.from("jugadores").update({ nombre: nuevoNombre }).eq("id", id);
+  if (error) { showToast("Error: " + error.message, "error"); return; }
+  showToast("Nombre actualizado", "success");
+  renderAdminContent();
+}
+
+async function toggleActivoJugador(id, activoActual) {
+  const nuevoEstado = !activoActual;
+  const { error } = await sb.from("jugadores").update({ activo: nuevoEstado }).eq("id", id);
+  if (error) { showToast("Error: " + error.message, "error"); return; }
+  showToast(nuevoEstado ? "Jugador reactivado" : "Jugador desactivado", "success");
+  renderAdminContent();
+}
+
+async function agregarJugadorAdmin(cat) {
+  const input = document.getElementById("nuevo-jugador-nombre");
+  const nombre = input.value.trim();
+  if (!nombre) { showToast("Ingresá el nombre del jugador", "error"); return; }
+  const { error } = await sb.from("jugadores").insert({ nombre, club_id: adminJugadoresClub, categoria: cat });
+  if (error) {
+    showToast(error.message.includes("duplicate") ? "Ese jugador ya está en el plantel" : "Error al agregar jugador", "error");
+    return;
+  }
+  showToast(`${nombre} agregado`, "success");
+  renderAdminContent();
 }
 
 // Amarillas de TODOS los clubes en una categoría (vista del admin).
