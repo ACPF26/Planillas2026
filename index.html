@@ -1251,10 +1251,6 @@
             <label>Cuarto árbitro (opcional)</label>
             <input type="text" id="cuarto-arbitro" placeholder="Nombre...">
           </div>
-          <div class="form-group">
-            <label>Personal técnico autorizado (opcional)</label>
-            <textarea id="personal-tecnico" rows="2" placeholder="Un nombre por línea (hasta 4)"></textarea>
-          </div>
         </div>
 
         <div class="form-row">
@@ -1898,8 +1894,6 @@ function agregarCambio(team) {
     <select class="cambio-sale"><option value="">Jugador...</option>${opciones}</select>
     <span class="cambio-label">Entra</span>
     <select class="cambio-entra"><option value="">Jugador...</option>${opciones}</select>
-    <span class="cambio-label">Min.</span>
-    <input type="number" class="cambio-minuto" min="0" max="120" placeholder="'">
     <button type="button" class="cambio-quitar" onclick="document.getElementById('${cid}').remove()">✕</button>
   `;
   cont.appendChild(row);
@@ -1910,10 +1904,9 @@ function leerCambios(team) {
   const porId = Object.fromEntries(plantel.map(p => [p.id, p.nombre]));
   const rows = [...document.querySelectorAll(`#cambios-${team} .cambio-row`)];
   return rows.map(row => {
-    const sale   = row.querySelector(".cambio-sale").value;
-    const entra  = row.querySelector(".cambio-entra").value;
-    const minuto = row.querySelector(".cambio-minuto").value;
-    return { sale, entra, minuto, saleNombre: porId[sale] || "", entraNombre: porId[entra] || "" };
+    const sale  = row.querySelector(".cambio-sale").value;
+    const entra = row.querySelector(".cambio-entra").value;
+    return { sale, entra, saleNombre: porId[sale] || "", entraNombre: porId[entra] || "" };
   }).filter(c => c.sale && c.entra);
 }
 
@@ -2008,7 +2001,6 @@ function collectData() {
     juezLinea1: document.getElementById("juez-linea-1").value,
     juezLinea2: document.getElementById("juez-linea-2").value,
     cuartoArbitro: document.getElementById("cuarto-arbitro").value,
-    personalTecnico: document.getElementById("personal-tecnico").value,
     localId, visitanteId,
     local: clubesCache[localId],
     visitante: clubesCache[visitanteId],
@@ -2100,21 +2092,16 @@ function showPreview() {
       <div class="preview-section">
         <h4>${esc(club)} – Cambios</h4>
         <table class="preview-table">
-          <tr><th>Sale</th><th>Entra</th><th>Minuto</th></tr>
+          <tr><th>Sale</th><th>Entra</th></tr>
           ${cambios.map(c => `
             <tr>
               <td>${esc(c.saleNombre)}</td>
               <td>${esc(c.entraNombre)}</td>
-              <td>${c.minuto || "–"}</td>
             </tr>`).join("")}
         </table>
       </div>`;
     }
   });
-
-  if (d.personalTecnico) {
-    html += `<div class="preview-section"><h4>Personal técnico autorizado</h4><p style="font-size:13px;color:#374151;white-space:pre-line;">${esc(d.personalTecnico)}</p></div>`;
-  }
 
   if (d.observacion) {
     html += `<div class="preview-section"><h4>Observación</h4><p style="font-size:13px;color:#374151;">${esc(d.observacion)}</p></div>`;
@@ -2151,7 +2138,6 @@ async function submitPlanilla() {
     juez_linea_1: d.juezLinea1,
     juez_linea_2: d.juezLinea2,
     cuarto_arbitro: d.cuartoArbitro,
-    personal_tecnico: d.personalTecnico,
     observacion: d.observacion,
     jugadores_local: d.jugadoresLocal,
     jugadores_visitante: d.jugadoresVisitante,
@@ -2958,6 +2944,7 @@ async function renderJugadoresAdmin(cat) {
     </table>` : `<div class="no-data" style="padding:16px;">Sin jugadores cargados en ${esc(cat)} para este club.</div>`}
     <div class="add-fixture-form">
       <input type="text" id="nuevo-jugador-nombre" placeholder="Apellido, Nombre..." style="flex:1;">
+      <input type="text" id="nuevo-jugador-dni" placeholder="DNI (si lo tenés)" style="width:120px;">
       <button class="btn-mini" onclick="agregarJugadorAdmin('${cat}')">+ Agregar</button>
     </div>
   </div>`;
@@ -2996,9 +2983,11 @@ async function toggleActivoJugador(id, activoActual) {
 
 async function agregarJugadorAdmin(cat) {
   const input = document.getElementById("nuevo-jugador-nombre");
+  const dniInput = document.getElementById("nuevo-jugador-dni");
   const nombre = input.value.trim();
+  const dni = dniInput.value.trim();
   if (!nombre) { showToast("Ingresá el nombre del jugador", "error"); return; }
-  const { error } = await sb.from("jugadores").insert({ nombre, club_id: adminJugadoresClub, categoria: cat });
+  const { error } = await sb.from("jugadores").insert({ nombre, club_id: adminJugadoresClub, categoria: cat, dni: dni || null });
   if (error) {
     showToast(error.message.includes("duplicate") ? "Ese jugador ya está en el plantel" : "Error al agregar jugador", "error");
     return;
