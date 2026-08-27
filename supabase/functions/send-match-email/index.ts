@@ -40,6 +40,14 @@ function esc(s: unknown): string {
   );
 }
 
+// partido.fecha_cal viene de Postgres como "AAAA-MM-DD" — la mostramos
+// en el mail como DD-MM-AAAA, que es como la lee la asociación.
+function formatearFechaCal(fechaCal: unknown): string {
+  const s = String(fechaCal ?? "");
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : s;
+}
+
 function construirHtml(
   partido: any,
   localNombre: string,
@@ -47,8 +55,26 @@ function construirHtml(
   incidenciasLocal: any[],
   incidenciasVisitante: any[],
   suspensiones: any[],
-  avisos4Amarillas: any[]
+  avisos4Amarillas: any[],
+  cambiosLocal: any[],
+  cambiosVisitante: any[]
 ) {
+  const tablaCambios = (nombreClub: string, filas: any[]) => {
+    if (!filas.length) return "";
+    return `
+      <h4 style="color:#1a3fcc;margin:14px 0 6px;font-family:Arial,sans-serif;font-size:13px;">🔄 Cambios — ${esc(nombreClub)}</h4>
+      <table style="border-collapse:collapse;font-size:13px;width:100%;font-family:Arial,sans-serif;">
+        ${filas
+          .map(
+            (c, i) => `
+        <tr style="background:${i % 2 === 0 ? "#f8f9ff" : "white"}">
+          <td style="padding:5px 10px;">Sale <strong>${esc(c.jugador_sale)}</strong> — Entra <strong>${esc(c.jugador_entra)}</strong></td>
+        </tr>`
+          )
+          .join("")}
+      </table>`;
+  };
+
   const tablaIncidencias = (nombreClub: string, filas: any[]) => {
     const conDatos = filas.filter((j) => j.goles > 0 || j.amarillas > 0 || j.roja);
     if (!conDatos.length) return "";
@@ -82,6 +108,7 @@ function construirHtml(
     <div style="padding:24px;background:white;">
       <table style="border-collapse:collapse;font-size:14px;margin-bottom:20px;">
         <tr><td style="padding:4px 10px 4px 0;font-weight:bold;color:#555;width:150px;">Fecha Campeonato</td><td>Fecha ${esc(partido.fecha_nro)}</td></tr>
+        <tr><td style="padding:4px 10px 4px 0;font-weight:bold;color:#555;">Fecha del encuentro</td><td>${esc(formatearFechaCal(partido.fecha_cal))}</td></tr>
         <tr><td style="padding:4px 10px 4px 0;font-weight:bold;color:#555;">Categoría</td><td>${esc(partido.categoria)}</td></tr>
         <tr><td style="padding:4px 10px 4px 0;font-weight:bold;color:#555;">Árbitro</td><td>${esc(partido.arbitro) || "–"}</td></tr>
         <tr><td style="padding:4px 10px 4px 0;font-weight:bold;color:#555;">Resultado</td>
@@ -89,6 +116,8 @@ function construirHtml(
       </table>
       ${tablaIncidencias(localNombre, incidenciasLocal)}
       ${tablaIncidencias(visNombre, incidenciasVisitante)}
+      ${tablaCambios(localNombre, cambiosLocal)}
+      ${tablaCambios(visNombre, cambiosVisitante)}
       ${partido.observacion ? `<p style="margin-top:20px;font-size:13px;"><strong>Observación:</strong> ${esc(partido.observacion)}</p>` : ""}
       ${
         suspensiones.length
@@ -196,6 +225,25 @@ Deno.serve(async (req) => {
     const incLocal = (incidencias || []).filter((i: any) => i.club_id === partido.club_local_id);
     const incVis = (incidencias || []).filter((i: any) => i.club_id === partido.club_visitante_id);
 
+    // Cambios (sustituciones) — si algo falla acá, se manda el mail igual sin esa parte.
+    let cambiosLocal: any[] = [];
+    let cambiosVis: any[] = [];
+    try {
+      const { data: cambiosRaw } = await supabase
+        .from("cambios")
+        .select("club_id, sale:jugador_sale_id(nombre), entra:jugador_entra_id(nombre)")
+        .eq("partido_id", partido_id);
+      const cambios = (cambiosRaw || []).map((c: any) => ({
+        club_id: c.club_id,
+        jugador_sale: c.sale?.nombre || "",
+        jugador_entra: c.entra?.nombre || "",
+      }));
+      cambiosLocal = cambios.filter((c: any) => c.club_id === partido.club_local_id);
+      cambiosVis = cambios.filter((c: any) => c.club_id === partido.club_visitante_id);
+    } catch (err) {
+      console.error("No se pudieron cargar los cambios, se manda el mail sin esa parte:", err);
+    }
+
     // Suspensiones nuevas + aviso de "4 amarillas". Todo esto es contenido
     // extra del mail: si algo falla acá, no debe voltear el envío del mail
     // en sí — se loguea el error y se manda igual, solo sin esos recuadros.
@@ -256,7 +304,7 @@ Deno.serve(async (req) => {
     // Sacando los saltos de línea del HTML antes de mandarlo, ese patrón
     // nunca aparece (el resultado visual no cambia — los navegadores/
     // clientes de mail ya colapsan espacios en blanco al renderizar HTML).
-    const html = construirHtml(partido, localNombre, visNombre, incLocal, incVis, suspensiones, avisos4Amarillas)
+    const html = construirHtml(partido, localNombre, visNombre, incLocal, incVis, suspensiones, avisos4Amarillas, cambiosLocal, cambiosVis)
       .replace(/\s+/g, " ")
       .trim();
 
