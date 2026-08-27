@@ -225,6 +225,28 @@ Deno.serve(async (req) => {
     const incLocal = (incidencias || []).filter((i: any) => i.club_id === partido.club_local_id);
     const incVis = (incidencias || []).filter((i: any) => i.club_id === partido.club_visitante_id);
 
+    // Mails de los delegados de ambos clubes (perfiles no guarda el email,
+    // así que se busca por id con la API admin de Auth). Si algo falla o
+    // no hay delegado cargado para algún club, ese club simplemente no
+    // recibe — no se cae el envío entero por eso.
+    let delegadosEmails: string[] = [];
+    try {
+      const { data: perfilesClubes } = await supabase
+        .from("perfiles")
+        .select("id")
+        .eq("rol", "delegado")
+        .in("club_id", [partido.club_local_id, partido.club_visitante_id]);
+      const emails = await Promise.all(
+        (perfilesClubes || []).map(async (p: any) => {
+          const { data: u } = await supabase.auth.admin.getUserById(p.id);
+          return u?.user?.email || null;
+        })
+      );
+      delegadosEmails = emails.filter((e): e is string => !!e);
+    } catch (err) {
+      console.error("No se pudieron buscar los mails de los delegados:", err);
+    }
+
     // Cambios (sustituciones) — si algo falla acá, se manda el mail igual sin esa parte.
     let cambiosLocal: any[] = [];
     let cambiosVis: any[] = [];
@@ -309,7 +331,13 @@ Deno.serve(async (req) => {
       .trim();
 
     const testTo = Deno.env.get("TEST_EMAIL_TO");
-    const destinatario = testTo || Deno.env.get("GMAIL_USER")!; // nunca se manda a delegados sin querer
+    // Con TEST_EMAIL_TO puesto, siempre va ahí (modo prueba). Sin esa
+    // variable, va a los delegados de ambos clubes; si por algún motivo
+    // no se encontró ninguno, cae a la casilla de la ACPF para no perder
+    // el aviso.
+    const destinatarios = testTo
+      ? [testTo]
+      : (delegadosEmails.length ? delegadosEmails : [Deno.env.get("GMAIL_USER")!]);
 
     const client = new SMTPClient({
       connection: {
@@ -327,14 +355,14 @@ Deno.serve(async (req) => {
 
     await client.send({
       from: Deno.env.get("GMAIL_USER")!,
-      to: destinatario,
+      to: destinatarios,
       subject: asunto,
       content: "auto",
       html,
     });
     await client.close();
 
-    return new Response(JSON.stringify({ ok: true, enviado_a: destinatario, modo_prueba: !!testTo }), {
+    return new Response(JSON.stringify({ ok: true, enviado_a: destinatarios, modo_prueba: !!testTo }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

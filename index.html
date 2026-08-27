@@ -2158,6 +2158,19 @@ async function submitPlanilla() {
   if (resultado?.nuevas_suspensiones?.length) {
     showToast(`⚠️ ${resultado.nuevas_suspensiones.length} nueva(s) suspensión(es) registrada(s)`, "success");
   }
+
+  // Aviso por mail a los delegados de ambos clubes. No bloquea ni rompe
+  // el flujo si falla — el partido ya quedó cargado igual.
+  if (resultado?.partido_id) {
+    sb.functions.invoke("send-match-email", { body: { partido_id: resultado.partido_id } })
+      .then(({ data, error }) => {
+        if (error || !data?.ok) {
+          console.error("No se pudo enviar el aviso por mail:", error || data?.error);
+          showToast("⚠️ La planilla se cargó bien, pero el mail de aviso no se pudo enviar", "error");
+        }
+      });
+  }
+
   showSuccess(d);
 }
 
@@ -2697,7 +2710,7 @@ async function renderFixture(cat, editable) {
         <td style="white-space:nowrap;">
           <button class="btn-mini" onclick="guardarFixtureRow('${r.id}')">Guardar</button>
           <button class="btn-mini danger" onclick="eliminarFixture('${r.id}')">✕</button>
-          ${r.estado === "Jugado" ? `<button class="btn-mini" style="background:#555;" onclick="probarAvisoMail(${r.fecha_nro}, '${cat}', '${r.club_local_id}', '${r.club_visitante_id}')" title="Manda un mail de PRUEBA (solo a la casilla de prueba configurada, nunca a delegados)">✉️ Probar</button>` : ""}
+          ${r.estado === "Jugado" ? `<button class="btn-mini" style="background:#555;" onclick="reenviarAvisoMail(${r.fecha_nro}, '${cat}', '${r.club_local_id}', '${r.club_visitante_id}')" title="Reenvía el mail de aviso de este partido a los delegados de ambos clubes">✉️ Reenviar aviso</button>` : ""}
         </td>
       </tr>`;
     }).join("");
@@ -2718,10 +2731,10 @@ async function renderFixture(cat, editable) {
   return html;
 }
 
-// Dispara el envío de PRUEBA del mail de resumen (nunca a delegados —
-// el destinatario real depende de la variable TEST_EMAIL_TO configurada
-// en el Edge Function; mientras esté puesta, siempre va ahí).
-async function probarAvisoMail(fechaNro, categoria, localId, visId) {
+// Reenvía el mail de aviso de un partido ya cargado (por ejemplo, después
+// de corregir algo). Mientras TEST_EMAIL_TO esté configurado en el Edge
+// Function, siempre va ahí en vez de a los delegados reales.
+async function reenviarAvisoMail(fechaNro, categoria, localId, visId) {
   showToast("Buscando el partido...");
   const { data: partidos } = await sb.from("partidos").select("id")
     .eq("fecha_nro", fechaNro).eq("categoria", categoria)
@@ -2729,11 +2742,11 @@ async function probarAvisoMail(fechaNro, categoria, localId, visId) {
     .limit(1);
 
   if (!partidos || !partidos.length) {
-    showToast("No encontré el partido cargado para probar el mail", "error");
+    showToast("No encontré el partido cargado para reenviar el mail", "error");
     return;
   }
 
-  showToast("Enviando mail de prueba...");
+  showToast("Reenviando mail...");
   const { data, error } = await sb.functions.invoke("send-match-email", {
     body: { partido_id: partidos[0].id }
   });
@@ -2743,7 +2756,8 @@ async function probarAvisoMail(fechaNro, categoria, localId, visId) {
     return;
   }
   if (data?.ok) {
-    showToast(`✉️ Mail de prueba enviado a ${data.enviado_a}`, "success");
+    const destinos = Array.isArray(data.enviado_a) ? data.enviado_a.join(", ") : data.enviado_a;
+    showToast(`✉️ Mail reenviado a ${destinos}`, "success");
   } else {
     showToast("Error: " + (data?.error || "desconocido"), "error");
   }
