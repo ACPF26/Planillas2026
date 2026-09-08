@@ -1136,13 +1136,8 @@
     <div id="miclub-content" style="padding:16px;">
       <div class="no-data">Cargando...</div>
     </div>
-    <nav class="bottom-nav" id="miclub-bottom-nav">
-      <button class="bn-item active" onclick="selectMiClubCat(this,'Primera')">Primera</button>
-      <button class="bn-item" onclick="selectMiClubCat(this,'Reserva')">Reserva</button>
-      <button class="bn-item" onclick="selectMiClubCat(this,'Sub-20')">Sub-20</button>
-      <button class="bn-item" onclick="selectMiClubCat(this,'Cadetes')">Cadetes</button>
-      <button class="bn-item" onclick="selectMiClubCat(this,'Veteranos')">Veteranos</button>
-    </nav>
+    <!-- Botones armados dinámicamente en doLogin() según las categorías del perfil -->
+    <nav class="bottom-nav" id="miclub-bottom-nav"></nav>
   </div>
 </div>
 
@@ -1176,6 +1171,7 @@
       <button class="bn-item" onclick="selectAdminCat(this,'Sub-20')">Sub-20</button>
       <button class="bn-item" onclick="selectAdminCat(this,'Cadetes')">Cadetes</button>
       <button class="bn-item" onclick="selectAdminCat(this,'Veteranos')">Veteranos</button>
+      <button class="bn-item" onclick="selectAdminCat(this,'Femenino')">Femenino</button>
     </nav>
   </div>
 </div>
@@ -1227,6 +1223,7 @@
               <option value="Reserva">Reserva</option>
               <option value="Primera">Primera</option>
               <option value="Veteranos">Veteranos</option>
+              <option value="Femenino">Femenino</option>
             </select>
           </div>
           <div class="form-group">
@@ -1375,19 +1372,32 @@ const SUPABASE_URL = "https://rhzcdvfpfrkwqjqlycnr.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoemNkdmZwZnJrd3FqcWx5Y25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzg3NjYsImV4cCI6MjEwMjkxNDc2Nn0.yEypDW7tC_RUs6LN-I94VAdoN6GnYhuG8DptCmx6OUY";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const CATEGORIAS = ["Cadetes", "Sub-20", "Reserva", "Primera", "Veteranos"];
+// Categorías "de varones": son las que ve/recibe un delegado que no tiene
+// `categorias` asignadas en su perfil (compatibilidad con los delegados de
+// siempre). Femenino queda afuera de esta lista a propósito: solo la ve
+// quien tenga `categorias: ["Femenino"]` puesto explícitamente.
+const CATEGORIAS_DEFAULT = ["Cadetes", "Sub-20", "Reserva", "Primera", "Veteranos"];
+const CATEGORIAS = [...CATEGORIAS_DEFAULT, "Femenino"];
+
+// Categorías que le corresponden a un perfil de delegado: las suyas propias
+// si tiene `categorias` cargada, o las de varones por defecto si no.
+function categoriasVisiblesPerfil(perfil) {
+  return (perfil.categorias && perfil.categorias.length) ? perfil.categorias : CATEGORIAS_DEFAULT;
+}
 
 // Escudos y color dominante de cada club (extraído de los PNG que subieron).
 const CLUBES_VISUAL = {
-  "Anahí":          { logo: "./anahi.png",          color: "#2030f0" },
-  "Camba Porá":     { logo: "./camba_pora.png",      color: "#006000" },
-  "Coe Mbota":      { logo: "./coe_mbota.png",       color: "#209000" },
-  "Cruz Quiroz":    { logo: "./cruz_quiroz.png",     color: "#0070b0" },
-  "Once Corazones": { logo: "./once_corazones.png",  color: "#103070" },
-  "San Antonio":    { logo: "./san_antonio.png",     color: "#e02020" },
-  "San Isidro":     { logo: "./san_isidro.png",      color: "#e07000" },
-  "Sol Naciente":   { logo: "./sol_naciente.png",     color: "#b00000" },
-  "Sol de América": { logo: "./sol_de_america.png",   color: "#c9a227" }
+  "Anahí":               { logo: "./anahi.png",                color: "#2030f0" },
+  "Camba Porá":          { logo: "./camba_pora.png",            color: "#006000" },
+  "Coe Mbota":           { logo: "./coe_mbota.png",             color: "#209000" },
+  "Cruz Quiroz":         { logo: "./cruz_quiroz.png",           color: "#0070b0" },
+  "Once Corazones":      { logo: "./once_corazones.png",        color: "#103070" },
+  "San Antonio":         { logo: "./san_antonio.png",           color: "#e02020" },
+  "San Isidro":          { logo: "./san_isidro.png",            color: "#e07000" },
+  "Sol Naciente":        { logo: "./sol_naciente.png",           color: "#b00000" },
+  "Sol de América":      { logo: "./sol_de_america.png",         color: "#c9a227" },
+  "Las Reinas del Balón": { logo: "./las_reinas_del_balon.png",  color: "#e0399b" },
+  "Soñadoras":           { logo: "./sonadoras.png",              color: "#d6408a" }
 };
 function clubBadge(nombre) {
   const v = CLUBES_VISUAL[nombre];
@@ -1458,7 +1468,7 @@ async function doLogin() {
 
   currentUser = data.user;
   const { data: perfil, error: perfErr } = await sb
-    .from("perfiles").select("rol,club_id,nombre").eq("id", currentUser.id).single();
+    .from("perfiles").select("rol,club_id,nombre,categorias").eq("id", currentUser.id).single();
 
   btn.disabled = false; btn.textContent = "INGRESAR";
 
@@ -1486,8 +1496,17 @@ async function doLogin() {
     document.getElementById("miclub-hero").style.background = gradiente;
     document.getElementById("miclub-bottom-nav").style.background =
       `linear-gradient(135deg, ${color}cc 0%, rgba(13,23,48,0.7) 100%)`;
+
+    // El nav de categorías de este delegado se arma según su perfil: solo
+    // sus categorías asignadas (ej. una encargada femenina ve únicamente
+    // "Femenino", nunca las categorías de varones del resto del club).
+    const catsPerfil = categoriasVisiblesPerfil(perfil);
+    const nav = document.getElementById("miclub-bottom-nav");
+    nav.innerHTML = catsPerfil.map((cat, i) =>
+      `<button class="bn-item${i === 0 ? " active" : ""}" onclick="selectMiClubCat(this,'${cat}')">${esc(cat)}</button>`
+    ).join("");
     document.getElementById("miclub-screen").style.display = "block";
-    selectMiClubCat(document.querySelector("#miclub-screen .bn-item"), "Primera");
+    selectMiClubCat(document.querySelector("#miclub-screen .bn-item"), catsPerfil[0]);
   }
 }
 
