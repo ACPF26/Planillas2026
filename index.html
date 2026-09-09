@@ -1376,7 +1376,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // `categorias` asignadas en su perfil (compatibilidad con los delegados de
 // siempre). Femenino queda afuera de esta lista a propósito: solo la ve
 // quien tenga `categorias: ["Femenino"]` puesto explícitamente.
-const CATEGORIAS_DEFAULT = ["Cadetes", "Sub-20", "Reserva", "Primera", "Veteranos"];
+const CATEGORIAS_DEFAULT = ["Primera", "Reserva", "Sub-20", "Cadetes", "Veteranos"];
 const CATEGORIAS = [...CATEGORIAS_DEFAULT, "Femenino"];
 
 // Categorías que le corresponden a un perfil de delegado: las suyas propias
