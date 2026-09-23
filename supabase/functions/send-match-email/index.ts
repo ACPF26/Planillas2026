@@ -229,15 +229,28 @@ Deno.serve(async (req) => {
     // así que se busca por id con la API admin de Auth). Si algo falla o
     // no hay delegado cargado para algún club, ese club simplemente no
     // recibe — no se cae el envío entero por eso.
+    //
+    // Un delegado solo recibe el aviso de las categorías que le
+    // corresponden: si su perfil tiene `categorias` cargada (ej. una
+    // encargada femenina con ["Femenino"]), únicamente ve esas; si no
+    // tiene nada cargado, son las categorías de varones de siempre —
+    // Femenino queda afuera de ese default a propósito, para que una
+    // encargada femenina no le llegue nada de las otras categorías del
+    // club y viceversa.
+    const CATEGORIAS_DEFAULT = ["Cadetes", "Sub-20", "Reserva", "Primera", "Veteranos"];
     let delegadosEmails: string[] = [];
     try {
       const { data: perfilesClubes } = await supabase
         .from("perfiles")
-        .select("id")
+        .select("id, categorias")
         .eq("rol", "delegado")
         .in("club_id", [partido.club_local_id, partido.club_visitante_id]);
+      const perfilesQueVen = (perfilesClubes || []).filter((p: any) => {
+        const efectivas = p.categorias && p.categorias.length ? p.categorias : CATEGORIAS_DEFAULT;
+        return efectivas.includes(partido.categoria);
+      });
       const emails = await Promise.all(
-        (perfilesClubes || []).map(async (p: any) => {
+        perfilesQueVen.map(async (p: any) => {
           const { data: u } = await supabase.auth.admin.getUserById(p.id);
           return u?.user?.email || null;
         })

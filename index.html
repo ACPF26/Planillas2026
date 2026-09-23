@@ -1090,7 +1090,8 @@
     <button class="ctab" onclick="selectCat(this,'Reserva')">Reserva</button>
     <button class="ctab" onclick="selectCat(this,'Sub-20')">Sub-20</button>
     <button class="ctab" onclick="selectCat(this,'Cadetes')">Cadetes</button>
-    <button class="ctab" onclick="selectCat(this,'Veteranos')">Veteranos</button>
+    <button class="ctab" onclick="selectCat(this,'Veteranos +45')">Veteranos +45</button>
+    <button class="ctab" onclick="selectCat(this,'Veteranos +35')">Veteranos +35</button>
   </div>
 
   <!-- Tabs sección -->
@@ -1170,7 +1171,8 @@
       <button class="bn-item" onclick="selectAdminCat(this,'Reserva')">Reserva</button>
       <button class="bn-item" onclick="selectAdminCat(this,'Sub-20')">Sub-20</button>
       <button class="bn-item" onclick="selectAdminCat(this,'Cadetes')">Cadetes</button>
-      <button class="bn-item" onclick="selectAdminCat(this,'Veteranos')">Veteranos</button>
+      <button class="bn-item" onclick="selectAdminCat(this,'Veteranos +45')">+45</button>
+      <button class="bn-item" onclick="selectAdminCat(this,'Veteranos +35')">+35</button>
       <button class="bn-item" onclick="selectAdminCat(this,'Femenino')">Femenino</button>
     </nav>
   </div>
@@ -1222,7 +1224,8 @@
               <option value="Sub-20">Sub-20</option>
               <option value="Reserva">Reserva</option>
               <option value="Primera">Primera</option>
-              <option value="Veteranos">Veteranos</option>
+              <option value="Veteranos +45">Veteranos +45</option>
+              <option value="Veteranos +35">Veteranos +35</option>
               <option value="Femenino">Femenino</option>
             </select>
           </div>
@@ -1376,7 +1379,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // `categorias` asignadas en su perfil (compatibilidad con los delegados de
 // siempre). Femenino queda afuera de esta lista a propósito: solo la ve
 // quien tenga `categorias: ["Femenino"]` puesto explícitamente.
-const CATEGORIAS_DEFAULT = ["Primera", "Reserva", "Sub-20", "Cadetes", "Veteranos"];
+const CATEGORIAS_DEFAULT = ["Primera", "Reserva", "Sub-20", "Cadetes", "Veteranos +45", "Veteranos +35"];
 const CATEGORIAS = [...CATEGORIAS_DEFAULT, "Femenino"];
 
 // Categorías que le corresponden a un perfil de delegado: las suyas propias
@@ -1384,6 +1387,21 @@ const CATEGORIAS = [...CATEGORIAS_DEFAULT, "Femenino"];
 function categoriasVisiblesPerfil(perfil) {
   return (perfil.categorias && perfil.categorias.length) ? perfil.categorias : CATEGORIAS_DEFAULT;
 }
+
+// Texto corto para los botones del nav (pill), donde el nombre completo no
+// entra cómodo. En encabezados de tablas y el <select> se usa el nombre
+// completo tal cual, ahí sí hay lugar.
+const CATEGORIA_LABEL_CORTO = { "Veteranos +45": "+45", "Veteranos +35": "+35" };
+function categoriaLabelCorto(cat) {
+  return CATEGORIA_LABEL_CORTO[cat] || cat;
+}
+
+// Columna de acumulado_amarillas correspondiente a cada categoría (una
+// columna fija por categoría en esa tabla, mantenida por cargar_partido).
+const COL_AMARILLAS_POR_CATEGORIA = {
+  "Cadetes": "cadetes", "Sub-20": "sub_20", "Reserva": "reserva", "Primera": "primera",
+  "Veteranos +45": "veteranos_45", "Veteranos +35": "veteranos_35", "Femenino": "femenino"
+};
 
 // Escudos y color dominante de cada club (extraído de los PNG que subieron).
 const CLUBES_VISUAL = {
@@ -1503,7 +1521,7 @@ async function doLogin() {
     const catsPerfil = categoriasVisiblesPerfil(perfil);
     const nav = document.getElementById("miclub-bottom-nav");
     nav.innerHTML = catsPerfil.map((cat, i) =>
-      `<button class="bn-item${i === 0 ? " active" : ""}" onclick="selectMiClubCat(this,'${cat}')">${esc(cat)}</button>`
+      `<button class="bn-item${i === 0 ? " active" : ""}" onclick="selectMiClubCat(this,'${cat}')">${esc(categoriaLabelCorto(cat))}</button>`
     ).join("");
     document.getElementById("miclub-screen").style.display = "block";
     selectMiClubCat(document.querySelector("#miclub-screen .bn-item"), catsPerfil[0]);
@@ -3034,18 +3052,15 @@ async function agregarJugadorAdmin(cat) {
 // en la categoría elegida, y marca si además acumula en otra.
 async function renderAmarillasAdmin(cat) {
   const { data } = await sb.from("acumulado_amarillas")
-    .select("nombre,club_id,total,en_suspension,cadetes,sub_20,reserva,primera,veteranos")
+    .select("nombre,club_id,total,en_suspension,cadetes,sub_20,reserva,primera,veteranos_45,veteranos_35,femenino")
     .order("total", { ascending: false });
-  const colDeCat = { "Cadetes": "cadetes", "Sub-20": "sub_20", "Reserva": "reserva", "Primera": "primera", "Veteranos": "veteranos" };
-  const colActual = colDeCat[cat];
+  const colActual = COL_AMARILLAS_POR_CATEGORIA[cat];
   const amarillas = (data || []).filter(a => a[colActual] > 0);
   const otrasCatsDe = a => {
     const partes = [];
-    if (cat !== "Cadetes" && a.cadetes > 0) partes.push("Cadetes");
-    if (cat !== "Sub-20" && a.sub_20 > 0) partes.push("Sub-20");
-    if (cat !== "Reserva" && a.reserva > 0) partes.push("Reserva");
-    if (cat !== "Primera" && a.primera > 0) partes.push("Primera");
-    if (cat !== "Veteranos" && a.veteranos > 0) partes.push("Veteranos");
+    for (const [nombreCat, col] of Object.entries(COL_AMARILLAS_POR_CATEGORIA)) {
+      if (cat !== nombreCat && a[col] > 0) partes.push(nombreCat);
+    }
     return partes.join(", ");
   };
   if (!amarillas.length) {
@@ -3107,20 +3122,17 @@ async function renderMiClub() {
   }
   if (sec === "amarillas") {
     const { data } = await sb.from("acumulado_amarillas")
-      .select("nombre,total,en_suspension,cadetes,sub_20,reserva,primera,veteranos")
+      .select("nombre,total,en_suspension,cadetes,sub_20,reserva,primera,veteranos_45,veteranos_35,femenino")
       .eq("club_id", clubId).order("total", { ascending: false });
-    const colDeCat = { "Cadetes": "cadetes", "Sub-20": "sub_20", "Reserva": "reserva", "Primera": "primera", "Veteranos": "veteranos" };
-    const colActual = colDeCat[cat];
+    const colActual = COL_AMARILLAS_POR_CATEGORIA[cat];
     // Solo jugadores con amarillas en ESTA categoría.
     const amarillas = (data || []).filter(a => a[colActual] > 0);
     // Si además tiene amarillas en otra categoría, lo marcamos como referencia.
     const otrasCatsDe = a => {
       const partes = [];
-      if (cat !== "Cadetes" && a.cadetes > 0) partes.push("Cadetes");
-      if (cat !== "Sub-20" && a.sub_20 > 0) partes.push("Sub-20");
-      if (cat !== "Reserva" && a.reserva > 0) partes.push("Reserva");
-      if (cat !== "Primera" && a.primera > 0) partes.push("Primera");
-      if (cat !== "Veteranos" && a.veteranos > 0) partes.push("Veteranos");
+      for (const [nombreCat, col] of Object.entries(COL_AMARILLAS_POR_CATEGORIA)) {
+        if (cat !== nombreCat && a[col] > 0) partes.push(nombreCat);
+      }
       return partes.join(", ");
     };
     cont.innerHTML = `<div class="cons-card"><h3>🟨 Amarillas — ${esc(cat)}</h3>
