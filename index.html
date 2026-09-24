@@ -1036,6 +1036,8 @@
 <div id="intro-screen" class="hero-bg" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;overflow:hidden;">
   <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 55%,rgba(26,63,204,0.22) 0%,transparent 68%);pointer-events:none;"></div>
   <div id="intro-logo" style="position:relative;width:300px;height:300px;display:flex;align-items:center;justify-content:center;">
+    <video id="intro-video" src="./intro.webm" muted playsinline autoplay
+      style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:300px;height:auto;display:none;pointer-events:none;"></video>
     <canvas id="intro-canvas" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 0 2px rgba(150,190,255,0.75));"></canvas>
     <img src="./logo2.png" alt="ACPF" style="position:relative;width:230px;height:auto;opacity:0;">
     <div id="intro-shine" style="position:absolute;inset:0;opacity:0;pointer-events:none;
@@ -2260,6 +2262,7 @@ window.addEventListener("load", () => {
   const menu       = document.getElementById("login-screen"); // sin menú público por ahora — ver volverMenu()
   const canvas     = document.getElementById("intro-canvas");
   const introImg   = document.querySelector("#intro-logo img");
+  const introVideo = document.getElementById("intro-video");
   const ctx        = canvas.getContext("2d");
   const LOGO_BOX   = 300;   // caja lógica donde se arma el logo (coincide con el tamaño final mostrado)
   const CANVAS_SIZE = 760;  // lienzo más grande para que las partículas nazcan bien lejos, sin recorte
@@ -2370,22 +2373,65 @@ window.addEventListener("load", () => {
           introImg.style.transition = "filter 0.6s ease";
         }, 500);
 
-        // Fade out intro revelando el menú (ya visible detrás, sin salto de fondo)
-        setTimeout(() => {
-          menu.style.display = "flex";
-          menu.style.opacity = "1";
-          intro.style.transition = "opacity 0.75s cubic-bezier(.4,0,.2,1)";
-          intro.style.opacity = "0";
-          setTimeout(() => { intro.style.display = "none"; }, 750);
-        }, 2500);
+        finishIntro(0, 2500);
       }
     }
     requestAnimationFrame(frame);
   }
 
-  const logoImg = new Image();
-  logoImg.onload = () => runParticles(buildPoints(logoImg));
-  logoImg.src = "./logo2.png";
+  // Cierra el intro: sube el subtítulo y funde hacia la pantalla de login.
+  // Compartido entre el camino del video y el de las partículas JS.
+  function finishIntro(subtitleDelay, fadeDelay) {
+    setTimeout(() => { introSub.style.opacity = "1"; }, subtitleDelay);
+    setTimeout(() => {
+      menu.style.display = "flex";
+      menu.style.opacity = "1";
+      intro.style.transition = "opacity 0.75s cubic-bezier(.4,0,.2,1)";
+      intro.style.opacity = "0";
+      setTimeout(() => { intro.style.display = "none"; }, 750);
+    }, fadeDelay);
+  }
+
+  function startParticleFallback() {
+    canvas.style.display = "block";
+    const logoImg = new Image();
+    logoImg.onload = () => runParticles(buildPoints(logoImg));
+    logoImg.src = "./logo2.png";
+  }
+
+  // El video con transparencia real (WebM/VP9 alfa) es mucho más liviano que
+  // animar miles de partículas por frame en canvas — clave en celulares de
+  // gama baja. Solo Safari/WebKit (iOS y macOS) no soporta esa transparencia,
+  // así que ahí (y ante cualquier falla de reproducción) usamos las
+  // partículas JS de siempre como respaldo.
+  function esWebKitSinAlfa() {
+    const ua = navigator.userAgent;
+    const esIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    const esSafariDesktop = /^((?!chrome|android).)*safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua);
+    return esIOS || esSafariDesktop;
+  }
+
+  if (esWebKitSinAlfa()) {
+    startParticleFallback();
+  } else {
+    canvas.style.display = "none";
+    introVideo.style.display = "block";
+    let resuelto = false;
+    const usarFallback = () => {
+      if (resuelto) return;
+      resuelto = true;
+      introVideo.style.display = "none";
+      startParticleFallback();
+    };
+    introVideo.addEventListener("ended", () => {
+      if (resuelto) return;
+      resuelto = true;
+      finishIntro(0, 900);
+    }, { once: true });
+    introVideo.addEventListener("error", usarFallback, { once: true });
+    const playPromise = introVideo.play();
+    if (playPromise && playPromise.catch) playPromise.catch(usarFallback);
+  }
 });
 
 // ══════════════════════════════════
