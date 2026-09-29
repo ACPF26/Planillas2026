@@ -1954,7 +1954,7 @@ function leerCambios(team) {
 // ══════════════════════════════════
 function cycle(btn, type, team) {
   let val = parseInt(btn.dataset.val || 0);
-  val = val >= 5 ? 0 : val + 1;
+  val = val >= 20 ? 0 : val + 1;
   btn.dataset.val = val;
   const id = btn.dataset.id;
   const badge = document.getElementById(`gv-${id}`);
