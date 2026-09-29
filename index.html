@@ -2442,10 +2442,10 @@ window.addEventListener("load", () => {
       startParticleFallback();
     };
     // El texto arranca a aparecer poco después de que arranca el video, no
-    // al final — si no, con el video de 4s el fundito del texto casi no se nota.
-    introVideo.addEventListener("playing", () => {
-      setTimeout(() => { introSub.style.opacity = "1"; }, 400);
-    }, { once: true });
+    // al final. Temporizador fijo en vez de escuchar "playing": con
+    // autoplay ese evento a veces dispara antes de que este código llegue
+    // a engancharse, y el listener quedaba sin disparar nunca.
+    setTimeout(() => { introSub.style.opacity = "1"; }, 400);
     introVideo.addEventListener("ended", () => {
       if (resuelto) return;
       resuelto = true;
