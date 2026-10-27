@@ -2888,7 +2888,7 @@ async function renderJugadoresAdmin(cat) {
     .join("");
 
   const { data: jugadoresData, error } = await sb.from("jugadores")
-    .select("id,nombre,activo")
+    .select("id,nombre,dni,activo")
     .eq("club_id", adminJugadoresClub)
     .eq("categoria", cat)
     .order("nombre");
@@ -2902,19 +2902,20 @@ async function renderJugadoresAdmin(cat) {
       <select id="jug-club-select" onchange="cambiarClubJugadores(this.value)">${opciones}</select>
     </div>
     ${jugadores.length ? `
-    <table class="cons-table" style="width:100%;">
-      <thead><tr><th>#</th><th>Jugador</th><th style="width:76px;"></th></tr></thead>
+    <div class="table-scroll"><table class="cons-table" style="width:100%;">
+      <thead><tr><th>#</th><th>Jugador</th><th style="width:96px;">DNI</th><th style="width:76px;"></th></tr></thead>
       <tbody>${jugadores.map((p, i) => `
         <tr id="jugrow-${p.id}">
           <td class="rank">${i + 1}</td>
           <td id="jugnombre-${p.id}" style="${p.activo ? "" : "opacity:0.5;"}">${esc(p.nombre)}${p.activo ? "" : ` <span style="color:#999;font-size:11px;">(inactivo)</span>`}</td>
+          <td style="white-space:nowrap;font-variant-numeric:tabular-nums;${p.activo ? "" : "opacity:0.5;"}">${p.dni ? esc(p.dni) : `<span style="color:#bbb;">—</span>`}</td>
           <td style="white-space:nowrap;">
             <button class="btn-mini" onclick="editarJugadorNombre('${p.id}')" title="Editar nombre">✏️</button>
             <button class="btn-mini danger" onclick="toggleActivoJugador('${p.id}', ${p.activo})" title="${p.activo ? "Desactivar" : "Reactivar"}">${p.activo ? "🚫" : "↩️"}</button>
           </td>
         </tr>`).join("")}
       </tbody>
-    </table>` : `<div class="no-data" style="padding:16px;">Sin jugadores cargados en ${esc(cat)} para este club.</div>`}
+    </table></div>` : `<div class="no-data" style="padding:16px;">Sin jugadores cargados en ${esc(cat)} para este club.</div>`}
     <div class="add-fixture-form">
       <input type="text" id="nuevo-jugador-nombre" placeholder="Apellido, Nombre..." style="flex:1;">
       <input type="text" id="nuevo-jugador-dni" placeholder="DNI (si lo tenés)" style="width:120px;">
@@ -2933,7 +2934,7 @@ function editarJugadorNombre(id) {
   const actual = cell.textContent.replace(/\s*\(inactivo\)\s*$/, "").trim();
   cell.innerHTML = `<input type="text" id="juginput-${id}" value="${esc(actual)}" style="width:100%;padding:5px 8px;border:1.5px solid #d0d8ff;border-radius:6px;font-size:13px;">`;
   const row = document.getElementById(`jugrow-${id}`);
-  row.children[2].innerHTML = `<button class="btn-mini" onclick="guardarJugadorNombre('${id}')">💾</button>`;
+  row.children[3].innerHTML = `<button class="btn-mini" onclick="guardarJugadorNombre('${id}')">💾</button>`;
 }
 
 async function guardarJugadorNombre(id) {
