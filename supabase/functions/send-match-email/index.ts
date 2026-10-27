@@ -68,7 +68,7 @@ function construirHtml(
           .map(
             (c, i) => `
         <tr style="background:${i % 2 === 0 ? "#f8f9ff" : "white"}">
-          <td style="padding:5px 10px;">Sale <strong>${esc(c.jugador_sale)}</strong> — Entra <strong>${esc(c.jugador_entra)}</strong></td>
+          <td style="padding:5px 10px;"><span style="color:#e03030;font-weight:bold;">▼</span> <strong>${esc(c.jugador_sale)}</strong> — <span style="color:#1f9d55;font-weight:bold;">▲</span> <strong>${esc(c.jugador_entra)}</strong></td>
         </tr>`
           )
           .join("")}
