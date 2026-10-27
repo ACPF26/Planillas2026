@@ -1442,7 +1442,7 @@ async function ensureClubes() {
 // Sesión actual
 let currentUser = null;
 let currentPerfil = null; // { rol, club_id, nombre }
-let suspendidosCache = []; // [{ jugador, club, tipo, fechas }]
+let suspendidosCache = []; // [{ jugador, club, tipo, fechas, faltan }]
 
 // ══════════════════════════════════
 // STATE
@@ -1627,7 +1627,7 @@ async function goToStep2() {
 async function fetchSuspendidos(localId, visitanteId) {
   const { data, error } = await sb
     .from("sanciones")
-    .select("tipo, fecha_inicio, fechas_a_cumplir, club_id, jugadores(nombre)")
+    .select("tipo, fechas_a_cumplir, fechas_cumplidas, club_id, jugadores(nombre)")
     .eq("estado", "Vigente")
     .in("club_id", [localId, visitanteId]);
   if (error) { console.warn("No se pudieron cargar suspendidos:", error); return []; }
@@ -1635,7 +1635,8 @@ async function fetchSuspendidos(localId, visitanteId) {
     jugador: s.jugadores?.nombre || "",
     club: clubesCache[s.club_id],
     tipo: s.tipo,
-    fechas: s.fechas_a_cumplir
+    fechas: s.fechas_a_cumplir,
+    faltan: Math.max(0, s.fechas_a_cumplir - (s.fechas_cumplidas || 0))
   }));
 }
 
@@ -1808,7 +1809,7 @@ function renderPlayerRow(container, player, idx, team, otrosClubes) {
 
   if (suspendido) {
     const motivo = datosSusp
-      ? `Suspendido: ${datosSusp.fechas} fecha${datosSusp.fechas > 1 ? "s" : ""} (${esc(datosSusp.tipo)})`
+      ? `Suspendido: faltan ${datosSusp.faltan} de ${datosSusp.fechas} fecha${datosSusp.fechas > 1 ? "s" : ""} (${esc(datosSusp.tipo)})`
       : "SUSPENDIDO";
     row.innerHTML = `
       <div class="player-name">
@@ -2767,7 +2768,7 @@ async function renderSanciones(editable) {
   // Sin filtro de categoría: una sanción bloquea al jugador en todas las
   // categorías, así que se ven todas juntas para no perderse ninguna.
   const { data, error } = await sb.from("sanciones")
-    .select("id,tipo,categoria,fecha_inicio,fechas_a_cumplir,estado,club_id,jugadores(nombre)")
+    .select("id,tipo,categoria,fecha_inicio,fechas_a_cumplir,fechas_cumplidas,estado,club_id,jugadores(nombre)")
     .order("estado").order("fecha_inicio", { ascending: false });
   if (error) { console.error(error); return `<div class="no-data">Error al cargar sanciones.</div>`; }
   const rows = data || [];
@@ -2778,7 +2779,7 @@ async function renderSanciones(editable) {
   <div class="cons-card">
     <h3>🚫 Suspensiones — todas las categorías</h3>
     <div class="table-scroll"><table class="cons-table" style="min-width:620px;">
-      <thead><tr><th>Jugador</th><th>Club</th><th>Categoría</th><th>Tipo</th><th style="text-align:center;">Fechas</th><th>Estado</th>${editable ? "<th></th>" : ""}</tr></thead>
+      <thead><tr><th>Jugador</th><th>Club</th><th>Categoría</th><th>Tipo</th><th style="text-align:center;">Fechas</th><th style="text-align:center;">Faltan</th><th>Estado</th>${editable ? "<th></th>" : ""}</tr></thead>
       <tbody>
       ${rows.map(r => {
         const club = clubesCache[r.club_id] || "?";
@@ -2789,6 +2790,7 @@ async function renderSanciones(editable) {
             <td>${esc(r.categoria)}</td>
             <td>${esc(r.tipo)}</td>
             <td style="text-align:center;">${r.fechas_a_cumplir}</td>
+            <td style="text-align:center;font-weight:700;">${r.estado === "Vigente" ? Math.max(0, r.fechas_a_cumplir - (r.fechas_cumplidas || 0)) : 0}</td>
             <td>${r.estado === "Vigente" ? "🚫 Vigente" : "✅ Cumplida"}</td>
           </tr>`;
         }
@@ -2798,6 +2800,7 @@ async function renderSanciones(editable) {
           <td>${esc(r.categoria)}</td>
           <td>${esc(r.tipo)}</td>
           <td style="text-align:center;"><input type="number" id="sc-fc-${r.id}" value="${r.fechas_a_cumplir}" min="1" max="10"></td>
+          <td style="text-align:center;font-weight:700;">${r.estado === "Vigente" ? Math.max(0, r.fechas_a_cumplir - (r.fechas_cumplidas || 0)) : 0}</td>
           <td><select id="sc-est-${r.id}">
             <option value="Vigente" ${r.estado === "Vigente" ? "selected" : ""}>Vigente</option>
             <option value="Cumplida" ${r.estado === "Cumplida" ? "selected" : ""}>Cumplida</option>
@@ -3027,16 +3030,17 @@ async function renderMiClub() {
   }
   if (sec === "suspendidos") {
     const { data } = await sb.from("sanciones")
-      .select("tipo,fecha_inicio,fechas_a_cumplir,jugadores(nombre)")
+      .select("tipo,fechas_a_cumplir,fechas_cumplidas,jugadores(nombre)")
       .eq("club_id", clubId).eq("categoria", cat).eq("estado", "Vigente");
     const susp = (data || []).map(s => ({
-      jugador: s.jugadores?.nombre || "", tipo: s.tipo, fechas: s.fechas_a_cumplir
+      jugador: s.jugadores?.nombre || "", tipo: s.tipo, fechas: s.fechas_a_cumplir,
+      faltan: Math.max(0, s.fechas_a_cumplir - (s.fechas_cumplidas || 0))
     }));
     cont.innerHTML = susp.length ? `
       <div class="cons-card"><h3>🚫 Suspendidos vigentes — ${esc(cat)}</h3>
-      <table class="cons-table" style="width:100%;"><thead><tr><th>Jugador</th><th style="width:60px;">Tipo</th><th style="width:72px;text-align:center;">Fechas</th></tr></thead>
+      <table class="cons-table" style="width:100%;"><thead><tr><th>Jugador</th><th style="width:60px;">Tipo</th><th style="width:72px;text-align:center;">Faltan</th></tr></thead>
       <tbody>${susp.map(r => `<tr><td style="font-weight:600">${esc(r.jugador)}</td><td>${esc(r.tipo)}</td>
-        <td style="font-weight:700;color:#e03030;text-align:center;">${r.fechas}</td></tr>`).join("")}</tbody></table></div>`
+        <td style="font-weight:700;color:#e03030;text-align:center;">${r.faltan} de ${r.fechas}</td></tr>`).join("")}</tbody></table></div>`
       : `<div class="cons-card"><h3>🚫 Suspendidos — ${esc(cat)}</h3><div class="no-data" style="color:#2a9d2a;padding:16px;">✅ Sin suspendidos.</div></div>`;
     return;
   }
