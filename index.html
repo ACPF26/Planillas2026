@@ -1317,7 +1317,7 @@
         <h3>¿Partido terminado?</h3>
         <p>Revisá los datos antes de enviar. Una vez enviado queda registrado en el sistema.</p>
         <button class="btn-preview" onclick="showPreview()">👁 Ver resumen</button>
-        <button class="btn-submit" onclick="submitPlanilla()">✓ Enviar Planilla</button>
+        <button class="btn-submit" id="btn-enviar-planilla" onclick="submitPlanilla()">✓ Enviar Planilla</button>
       </div>
 
       <div style="text-align:center; margin-top:16px;">
@@ -1570,6 +1570,7 @@ async function initApp() {
       sel.appendChild(o);
     });
   });
+  resetWizard();
   goToStep1();
 }
 
@@ -2146,8 +2147,8 @@ async function submitPlanilla() {
 
   if (!d.fecha) { showToast("Falta la fecha del campeonato", "error"); return; }
 
-  const btns = document.querySelectorAll(".btn-submit");
-  btns.forEach(b => { b.disabled = true; b.textContent = "Enviando..."; });
+  const btnEnviar = document.getElementById("btn-enviar-planilla");
+  btnEnviar.disabled = true; btnEnviar.textContent = "Enviando...";
 
   const payload = {
     fecha_nro: parseInt(d.fecha),
@@ -2170,7 +2171,7 @@ async function submitPlanilla() {
 
   const { data: resultado, error } = await sb.rpc("cargar_partido", { payload });
 
-  btns.forEach(b => { b.disabled = false; b.textContent = "✓ Enviar Planilla"; });
+  btnEnviar.disabled = false; btnEnviar.textContent = "✓ Enviar Planilla";
 
   if (error) {
     console.error(error);
@@ -2206,16 +2207,23 @@ function showSuccess(d) {
   setDot(3);
 }
 
-function newMatch() {
-  document.getElementById("success-screen").style.display = "none";
-  document.getElementById("fecha-num").value = "";
-  document.getElementById("fecha-cal").value = "";
-  document.getElementById("categoria").value = "";
-  document.getElementById("arbitro").value = "";
-  document.getElementById("club-local").value = "";
-  document.getElementById("club-visitante").value = "";
-  document.getElementById("observacion").value = "";
+// Deja el asistente de carga como nuevo: todos los campos vacíos y los
+// botones con su texto original. Se usa al empezar otra planilla y al
+// volver a entrar al asistente desde el panel.
+function resetWizard() {
+  ["fecha-num", "fecha-cal", "categoria", "arbitro", "juez-linea-1", "juez-linea-2",
+   "cuarto-arbitro", "club-local", "club-visitante", "observacion"]
+    .forEach(id => { document.getElementById(id).value = ""; });
   document.getElementById("teams-grid").innerHTML = "";
+  document.getElementById("success-screen").style.display = "none";
+  const btnEnviar = document.getElementById("btn-enviar-planilla");
+  btnEnviar.disabled = false; btnEnviar.textContent = "✓ Enviar Planilla";
+  const btnContinuar = document.querySelector("#step-1 .btn-submit");
+  btnContinuar.disabled = false; btnContinuar.textContent = "Continuar →";
+}
+
+function newMatch() {
+  resetWizard();
   goToStep1();
 }
 
