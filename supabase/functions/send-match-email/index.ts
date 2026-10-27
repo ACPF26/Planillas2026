@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
     // Femenino queda afuera de ese default a propósito, para que una
     // encargada femenina no le llegue nada de las otras categorías del
     // club y viceversa.
-    const CATEGORIAS_DEFAULT = ["Cadetes", "Sub-20", "Reserva", "Primera", "Veteranos"];
+    const CATEGORIAS_DEFAULT = ["Cadetes", "Sub-20", "Reserva", "Primera", "Veteranos +45", "Veteranos +35"];
     let delegadosEmails: string[] = [];
     try {
       const { data: perfilesClubes } = await supabase
