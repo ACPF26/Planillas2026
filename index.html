@@ -1442,7 +1442,7 @@ async function ensureClubes() {
 // Sesión actual
 let currentUser = null;
 let currentPerfil = null; // { rol, club_id, nombre }
-let suspendidosCache = []; // [{ jugador, club, tipo, fechaFin }]
+let suspendidosCache = []; // [{ jugador, club, tipo, fechas }]
 
 // ══════════════════════════════════
 // STATE
@@ -1635,7 +1635,7 @@ async function fetchSuspendidos(localId, visitanteId) {
     jugador: s.jugadores?.nombre || "",
     club: clubesCache[s.club_id],
     tipo: s.tipo,
-    fechaFin: s.fecha_inicio + s.fechas_a_cumplir - 1
+    fechas: s.fechas_a_cumplir
   }));
 }
 
@@ -1808,7 +1808,7 @@ function renderPlayerRow(container, player, idx, team, otrosClubes) {
 
   if (suspendido) {
     const motivo = datosSusp
-      ? `Suspendido hasta Fecha ${datosSusp.fechaFin} (${esc(datosSusp.tipo)})`
+      ? `Suspendido: ${datosSusp.fechas} fecha${datosSusp.fechas > 1 ? "s" : ""} (${esc(datosSusp.tipo)})`
       : "SUSPENDIDO";
     row.innerHTML = `
       <div class="player-name">
@@ -2483,7 +2483,7 @@ function renderSuspendidos(susp, cat) {
   <h3>🚫 Suspendidos — ${esc(cat)}</h3>
   <table class="cons-table" style="width:100%;">
     <thead><tr>
-      <th>Jugador</th><th>Club</th><th style="width:60px;">Tipo</th><th style="width:72px;text-align:center;">Hasta</th>
+      <th>Jugador</th><th>Club</th><th style="width:60px;">Tipo</th>
     </tr></thead>
     <tbody>
       ${susp.map(r => `
@@ -2491,7 +2491,6 @@ function renderSuspendidos(susp, cat) {
         <td style="font-weight:600">${esc(r.jugador)}</td>
         <td>${esc(r.club)}</td>
         <td>${esc(r.tipo)}</td>
-        <td style="font-weight:700;color:#e03030;text-align:center;">Fecha ${r.fecha_fin}</td>
       </tr>`).join("")}
     </tbody>
   </table>
@@ -2779,7 +2778,7 @@ async function renderSanciones(editable) {
   <div class="cons-card">
     <h3>🚫 Suspensiones — todas las categorías</h3>
     <div class="table-scroll"><table class="cons-table" style="min-width:620px;">
-      <thead><tr><th>Jugador</th><th>Club</th><th>Categoría</th><th>Tipo</th><th style="text-align:center;">Desde</th><th style="text-align:center;">Fechas</th><th>Estado</th>${editable ? "<th></th>" : ""}</tr></thead>
+      <thead><tr><th>Jugador</th><th>Club</th><th>Categoría</th><th>Tipo</th><th style="text-align:center;">Fechas</th><th>Estado</th>${editable ? "<th></th>" : ""}</tr></thead>
       <tbody>
       ${rows.map(r => {
         const club = clubesCache[r.club_id] || "?";
@@ -2789,7 +2788,6 @@ async function renderSanciones(editable) {
             <td>${esc(club)}</td>
             <td>${esc(r.categoria)}</td>
             <td>${esc(r.tipo)}</td>
-            <td style="text-align:center;">Fecha ${r.fecha_inicio}</td>
             <td style="text-align:center;">${r.fechas_a_cumplir}</td>
             <td>${r.estado === "Vigente" ? "🚫 Vigente" : "✅ Cumplida"}</td>
           </tr>`;
@@ -2799,7 +2797,6 @@ async function renderSanciones(editable) {
           <td>${esc(club)}</td>
           <td>${esc(r.categoria)}</td>
           <td>${esc(r.tipo)}</td>
-          <td style="text-align:center;">Fecha ${r.fecha_inicio}</td>
           <td style="text-align:center;"><input type="number" id="sc-fc-${r.id}" value="${r.fechas_a_cumplir}" min="1" max="10"></td>
           <td><select id="sc-est-${r.id}">
             <option value="Vigente" ${r.estado === "Vigente" ? "selected" : ""}>Vigente</option>
@@ -3033,13 +3030,13 @@ async function renderMiClub() {
       .select("tipo,fecha_inicio,fechas_a_cumplir,jugadores(nombre)")
       .eq("club_id", clubId).eq("categoria", cat).eq("estado", "Vigente");
     const susp = (data || []).map(s => ({
-      jugador: s.jugadores?.nombre || "", tipo: s.tipo, fechaFin: s.fecha_inicio + s.fechas_a_cumplir - 1
+      jugador: s.jugadores?.nombre || "", tipo: s.tipo, fechas: s.fechas_a_cumplir
     }));
     cont.innerHTML = susp.length ? `
       <div class="cons-card"><h3>🚫 Suspendidos vigentes — ${esc(cat)}</h3>
-      <table class="cons-table" style="width:100%;"><thead><tr><th>Jugador</th><th style="width:60px;">Tipo</th><th style="width:72px;text-align:center;">Hasta</th></tr></thead>
+      <table class="cons-table" style="width:100%;"><thead><tr><th>Jugador</th><th style="width:60px;">Tipo</th><th style="width:72px;text-align:center;">Fechas</th></tr></thead>
       <tbody>${susp.map(r => `<tr><td style="font-weight:600">${esc(r.jugador)}</td><td>${esc(r.tipo)}</td>
-        <td style="font-weight:700;color:#e03030;text-align:center;">Fecha ${r.fechaFin}</td></tr>`).join("")}</tbody></table></div>`
+        <td style="font-weight:700;color:#e03030;text-align:center;">${r.fechas}</td></tr>`).join("")}</tbody></table></div>`
       : `<div class="cons-card"><h3>🚫 Suspendidos — ${esc(cat)}</h3><div class="no-data" style="color:#2a9d2a;padding:16px;">✅ Sin suspendidos.</div></div>`;
     return;
   }

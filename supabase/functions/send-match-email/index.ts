@@ -129,8 +129,7 @@ function construirHtml(
             (s) => `
         <div style="font-size:13px;padding:5px 0;border-bottom:1px solid #ffe0e0;">
           <strong>${esc(s.jugador)}</strong> (${esc(s.club)}) — le corresponden <strong>${s.fechas_a_cumplir} fecha${s.fechas_a_cumplir > 1 ? "s" : ""}</strong> de suspensión
-          ${s.tipo === "Roja" ? "según informe arbitral" : "por acumulación de 5 amarillas"},
-          desde la Fecha ${s.fecha_inicio}.
+          ${s.tipo === "Roja" ? "según informe arbitral" : "por acumulación de 5 amarillas"}.
         </div>`
           )
           .join("")}
