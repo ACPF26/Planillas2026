@@ -2895,6 +2895,27 @@ async function renderJugadoresAdmin(cat) {
   if (error) return `<div class="no-data">Error al cargar el plantel.</div>`;
   const jugadores = jugadoresData || [];
 
+  // Para los inhabilitados: dónde juega ahora la misma persona (mismo DNI) en otro
+  // club, y cuántos partidos firmó ahí. Es una vista solo para el admin.
+  const dondeJuega = {};
+  const dnisInactivos = [...new Set(jugadores.filter(p => !p.activo && p.dni).map(p => p.dni))];
+  if (dnisInactivos.length) {
+    const { data: otras } = await sb.from("jugadores")
+      .select("id,dni,categoria,clubes(nombre)")
+      .in("dni", dnisInactivos).eq("activo", true).neq("club_id", adminJugadoresClub);
+    const firmados = {};
+    const ids = (otras || []).map(o => o.id);
+    if (ids.length) {
+      const { data: inc } = await sb.from("incidencias").select("jugador_id").in("jugador_id", ids).eq("jugo", true);
+      (inc || []).forEach(i => { firmados[i.jugador_id] = (firmados[i.jugador_id] || 0) + 1; });
+    }
+    (otras || []).forEach(o => {
+      const n = firmados[o.id] || 0;
+      const detalle = n ? `${n} firmado${n > 1 ? "s" : ""}` : "sin firmar todavía";
+      (dondeJuega[o.dni] = dondeJuega[o.dni] || []).push(`${o.clubes?.nombre || "otro club"} (${o.categoria}, ${detalle})`);
+    });
+  }
+
   return `
   <div class="cons-card">
     <h3>👥 Jugadores — ${esc(cat)}</h3>
@@ -2907,7 +2928,7 @@ async function renderJugadoresAdmin(cat) {
       <tbody>${jugadores.map((p, i) => `
         <tr id="jugrow-${p.id}">
           <td class="rank">${i + 1}</td>
-          <td id="jugnombre-${p.id}" style="${p.activo ? "" : "opacity:0.5;"}">${esc(p.nombre)}${p.activo ? "" : ` <span style="color:#999;font-size:11px;">(inactivo)</span>`}</td>
+          <td id="jugnombre-${p.id}" data-nombre="${esc(p.nombre)}"><span style="${p.activo ? "" : "opacity:0.5;"}">${esc(p.nombre)}${p.activo ? "" : ` <span style="color:#999;font-size:11px;">(inactivo)</span>`}</span>${!p.activo && p.dni && dondeJuega[p.dni] ? `<div style="font-size:11px;color:#b45309;font-weight:600;margin-top:2px;">↪ Juega en ${esc(dondeJuega[p.dni].join(" · "))}</div>` : ""}</td>
           <td style="white-space:nowrap;font-variant-numeric:tabular-nums;${p.activo ? "" : "opacity:0.5;"}">${p.dni ? esc(p.dni) : `<span style="color:#bbb;">—</span>`}</td>
           <td style="white-space:nowrap;">
             <button class="btn-mini" onclick="editarJugadorNombre('${p.id}')" title="Editar nombre">✏️</button>
@@ -2931,7 +2952,7 @@ function cambiarClubJugadores(clubId) {
 
 function editarJugadorNombre(id) {
   const cell = document.getElementById(`jugnombre-${id}`);
-  const actual = cell.textContent.replace(/\s*\(inactivo\)\s*$/, "").trim();
+  const actual = cell.dataset.nombre;
   cell.innerHTML = `<input type="text" id="juginput-${id}" value="${esc(actual)}" style="width:100%;padding:5px 8px;border:1.5px solid #d0d8ff;border-radius:6px;font-size:13px;">`;
   const row = document.getElementById(`jugrow-${id}`);
   row.children[3].innerHTML = `<button class="btn-mini" onclick="guardarJugadorNombre('${id}')">💾</button>`;
