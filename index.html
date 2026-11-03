@@ -2840,8 +2840,11 @@ function formularioSancionManual() {
     </div>
     <div class="add-fixture-form">
       <select id="sf-club" onchange="cargarOpcionesSancion()"><option value="">Club...</option>${clubes}</select>
-      <select id="sf-cat" onchange="cargarOpcionesSancion()">${cats}</select>
+      <span style="font-size:11px;color:#666;">Jugador de:</span>
+      <select id="sf-cat" onchange="sincronizarCatPartido()">${cats}</select>
       <select id="sf-jug"><option value="">Jugador...</option></select>
+      <span style="font-size:11px;color:#666;">Partido de:</span>
+      <select id="sf-cat-partido" onchange="cargarOpcionesSancion()">${cats}</select>
       <select id="sf-partido"><option value="">Partido donde ocurrió...</option></select>
       <input type="number" id="sf-fechas" value="1" min="1" max="10" style="width:64px;" title="Fechas de suspensión">
       <input type="text" id="sf-motivo" placeholder="Motivo (ej: insultos al árbitro desde afuera)" style="flex:1;min-width:200px;">
@@ -2855,18 +2858,26 @@ function fechaCalLegible(f) {
   return m ? `${m[3]}-${m[2]}-${m[1]}` : String(f || "");
 }
 
+// Al cambiar la categoría del jugador, el partido se propone de esa misma
+// categoría (lo más común); se puede cambiar aparte si el hecho pasó en otra.
+function sincronizarCatPartido() {
+  document.getElementById("sf-cat-partido").value = document.getElementById("sf-cat").value;
+  cargarOpcionesSancion();
+}
+
 async function cargarOpcionesSancion() {
   const clubId = document.getElementById("sf-club").value;
   const cat = document.getElementById("sf-cat").value;
+  const catPartido = document.getElementById("sf-cat-partido").value;
   const selJug = document.getElementById("sf-jug");
   const selPar = document.getElementById("sf-partido");
   selJug.innerHTML = '<option value="">Jugador...</option>';
   selPar.innerHTML = '<option value="">Partido donde ocurrió...</option>';
-  if (!clubId || !cat) return;
+  if (!clubId || !cat || !catPartido) return;
 
   const [{ data: jug }, { data: par }] = await Promise.all([
     sb.from("jugadores").select("id,nombre").eq("club_id", clubId).eq("categoria", cat).eq("activo", true).order("nombre"),
-    sb.from("partidos").select("id,fecha_nro,fecha_cal,club_local_id,club_visitante_id").eq("categoria", cat)
+    sb.from("partidos").select("id,fecha_nro,fecha_cal,club_local_id,club_visitante_id").eq("categoria", catPartido)
       .or(`club_local_id.eq.${clubId},club_visitante_id.eq.${clubId}`).order("fecha_cal", { ascending: false })
   ]);
   (jug || []).forEach(j => {
