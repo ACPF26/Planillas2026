@@ -2772,10 +2772,15 @@ async function renderSanciones(editable) {
     .order("estado").order("fecha_inicio", { ascending: false });
   if (error) { console.error(error); return `<div class="no-data">Error al cargar sanciones.</div>`; }
   const rows = data || [];
-  if (!rows.length) {
-    return `<div class="cons-card"><h3>🚫 Suspensiones — todas las categorías</h3><div class="no-data">Sin sanciones registradas.</div></div>`;
+  let formulario = "";
+  if (editable) {
+    await ensureClubes();
+    formulario = formularioSancionManual();
   }
-  return `
+  if (!rows.length) {
+    return `${formulario}<div class="cons-card"><h3>🚫 Suspensiones — todas las categorías</h3><div class="no-data">Sin sanciones registradas.</div></div>`;
+  }
+  return `${formulario}
   <div class="cons-card">
     <h3>🚫 Suspensiones — todas las categorías</h3>
     <div class="table-scroll"><table class="cons-table" style="min-width:620px;">
@@ -2814,6 +2819,94 @@ async function renderSanciones(editable) {
       </tbody>
     </table></div>
   </div>`;
+}
+
+// ── Suspensión por informe del árbitro (no sale de una planilla) ──
+// Por ejemplo, un jugador que insulta desde afuera de la cancha y el árbitro
+// lo identifica. Se ata al partido donde ocurrió, así se cuenta igual que las
+// rojas: se cumple con las planillas que el club vaya cargando después.
+const TIPO_SANCION_INFORME = "Informe";
+
+function formularioSancionManual() {
+  const clubes = Object.keys(clubesPorNombre).sort((a, b) => a.localeCompare(b, "es"))
+    .map(n => `<option value="${clubesPorNombre[n]}">${esc(n)}</option>`).join("");
+  const cats = CATEGORIAS.map(c => `<option value="${esc(c)}" ${c === adminCatActual ? "selected" : ""}>${esc(c)}</option>`).join("");
+  return `
+  <details class="cons-card" style="padding:12px 16px;">
+    <summary style="cursor:pointer;font-weight:700;color:#1a3fcc;font-family:Arial,sans-serif;font-size:14px;">➕ Agregar suspensión por informe del árbitro</summary>
+    <div style="font-size:12px;color:#666;margin:10px 0;font-family:Arial,sans-serif;">
+      Para sanciones que no salen de una planilla (por ejemplo, insultos desde afuera de la cancha).
+      Elegí el partido donde ocurrió: la suspensión se cumple con las planillas que el club cargue después.
+    </div>
+    <div class="add-fixture-form">
+      <select id="sf-club" onchange="cargarOpcionesSancion()"><option value="">Club...</option>${clubes}</select>
+      <select id="sf-cat" onchange="cargarOpcionesSancion()">${cats}</select>
+      <select id="sf-jug"><option value="">Jugador...</option></select>
+      <select id="sf-partido"><option value="">Partido donde ocurrió...</option></select>
+      <input type="number" id="sf-fechas" value="1" min="1" max="10" style="width:64px;" title="Fechas de suspensión">
+      <input type="text" id="sf-motivo" placeholder="Motivo (ej: insultos al árbitro desde afuera)" style="flex:1;min-width:200px;">
+      <button class="btn-mini" onclick="agregarSancionInforme()">Agregar</button>
+    </div>
+  </details>`;
+}
+
+function fechaCalLegible(f) {
+  const m = String(f || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : String(f || "");
+}
+
+async function cargarOpcionesSancion() {
+  const clubId = document.getElementById("sf-club").value;
+  const cat = document.getElementById("sf-cat").value;
+  const selJug = document.getElementById("sf-jug");
+  const selPar = document.getElementById("sf-partido");
+  selJug.innerHTML = '<option value="">Jugador...</option>';
+  selPar.innerHTML = '<option value="">Partido donde ocurrió...</option>';
+  if (!clubId || !cat) return;
+
+  const [{ data: jug }, { data: par }] = await Promise.all([
+    sb.from("jugadores").select("id,nombre").eq("club_id", clubId).eq("categoria", cat).eq("activo", true).order("nombre"),
+    sb.from("partidos").select("id,fecha_nro,fecha_cal,club_local_id,club_visitante_id").eq("categoria", cat)
+      .or(`club_local_id.eq.${clubId},club_visitante_id.eq.${clubId}`).order("fecha_cal", { ascending: false })
+  ]);
+  (jug || []).forEach(j => {
+    const o = document.createElement("option"); o.value = j.id; o.textContent = j.nombre; selJug.appendChild(o);
+  });
+  (par || []).forEach(p => {
+    const o = document.createElement("option"); o.value = p.id;
+    o.textContent = `Fecha ${p.fecha_nro} · ${fechaCalLegible(p.fecha_cal)} · ${clubesCache[p.club_local_id] || "?"} vs ${clubesCache[p.club_visitante_id] || "?"}`;
+    selPar.appendChild(o);
+  });
+}
+
+async function agregarSancionInforme() {
+  const clubId = document.getElementById("sf-club").value;
+  const cat = document.getElementById("sf-cat").value;
+  const jugadorId = document.getElementById("sf-jug").value;
+  const partidoId = document.getElementById("sf-partido").value;
+  const fechas = parseInt(document.getElementById("sf-fechas").value || 0);
+  const motivo = document.getElementById("sf-motivo").value.trim();
+  if (!clubId || !jugadorId || !partidoId) { showToast("Elegí club, jugador y el partido donde ocurrió", "error"); return; }
+  if (!(fechas >= 1)) { showToast("Indicá cuántas fechas de suspensión", "error"); return; }
+
+  const { data: partido, error: errPartido } = await sb.from("partidos").select("fecha_nro").eq("id", partidoId).single();
+  if (errPartido || !partido) { showToast("No se pudo leer el partido elegido", "error"); return; }
+
+  const { error } = await sb.from("sanciones").insert({
+    jugador_id: jugadorId, club_id: clubId, categoria: cat,
+    tipo: TIPO_SANCION_INFORME, motivo: motivo || "Informe del árbitro",
+    fecha_inicio: partido.fecha_nro + 1, fechas_a_cumplir: fechas, fechas_cumplidas: 0,
+    estado: "Vigente", partido_id: partidoId
+  });
+  if (error) {
+    console.error(error);
+    showToast(error.code === "23514"
+      ? "La base no acepta el tipo 'Informe' todavía (ver consulta de restricciones)"
+      : "Error: " + error.message, "error");
+    return;
+  }
+  showToast("Suspensión agregada", "success");
+  renderAdminContent();
 }
 
 async function guardarSancion(id) {
