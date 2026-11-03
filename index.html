@@ -2837,6 +2837,7 @@ function formularioSancionManual() {
     <div style="font-size:12px;color:#666;margin:10px 0;font-family:Arial,sans-serif;">
       Para sanciones que no salen de una planilla (por ejemplo, insultos desde afuera de la cancha).
       Elegí el partido donde ocurrió: la suspensión se cumple con las planillas que el club cargue después.
+      Se aplica en todas las categorías donde figura ese jugador en el club.
     </div>
     <div class="add-fixture-form">
       <select id="sf-club" onchange="cargarOpcionesSancion()"><option value="">Club...</option>${clubes}</select>
@@ -2903,12 +2904,27 @@ async function agregarSancionInforme() {
   const { data: partido, error: errPartido } = await sb.from("partidos").select("fecha_nro").eq("id", partidoId).single();
   if (errPartido || !partido) { showToast("No se pudo leer el partido elegido", "error"); return; }
 
-  const { error } = await sb.from("sanciones").insert({
-    jugador_id: jugadorId, club_id: clubId, categoria: cat,
+  // La suspensión vale en todas las categorías donde figura esa persona en el
+  // club (mismo DNI, o mismo nombre si no tiene DNI): una sanción por categoría,
+  // y cada una se cumple con las planillas de su propia categoría.
+  const { data: plantel, error: errPlantel } = await sb.from("jugadores")
+    .select("id,nombre,categoria,dni").eq("club_id", clubId).eq("activo", true);
+  if (errPlantel) { showToast("Error: " + errPlantel.message, "error"); return; }
+  const norm = s => String(s || "").trim().replace(/\s+/g, " ").toLowerCase();
+  const elegido = (plantel || []).find(j => j.id === jugadorId);
+  if (!elegido) { showToast("No se encontró al jugador elegido", "error"); return; }
+  // Misma persona: mismo DNI; si a alguna de las dos fichas le falta el DNI, mismo nombre.
+  // Dos fichas con DNI distinto nunca se consideran la misma persona (pueden ser homónimos).
+  const fichas = (plantel || []).filter(j =>
+    j.id === jugadorId ||
+    (elegido.dni && j.dni ? j.dni === elegido.dni : norm(j.nombre) === norm(elegido.nombre)));
+
+  const { error } = await sb.from("sanciones").insert(fichas.map(j => ({
+    jugador_id: j.id, club_id: clubId, categoria: j.categoria,
     tipo: TIPO_SANCION_INFORME, motivo: motivo || "Informe del árbitro",
     fecha_inicio: partido.fecha_nro + 1, fechas_a_cumplir: fechas, fechas_cumplidas: 0,
     estado: "Vigente", partido_id: partidoId
-  });
+  })));
   if (error) {
     console.error(error);
     showToast(error.code === "23514"
@@ -2916,7 +2932,7 @@ async function agregarSancionInforme() {
       : "Error: " + error.message, "error");
     return;
   }
-  showToast("Suspensión agregada", "success");
+  showToast(`Suspensión agregada en: ${fichas.map(j => j.categoria).join(", ")}`, "success");
   renderAdminContent();
 }
 
