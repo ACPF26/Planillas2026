@@ -236,14 +236,23 @@ Deno.serve(async (req) => {
     // Femenino queda afuera de ese default a propósito, para que una
     // encargada femenina no le llegue nada de las otras categorías del
     // club y viceversa.
-    const CATEGORIAS_DEFAULT = ["Cadetes", "Sub-20", "Reserva", "Primera", "Veteranos +45", "Veteranos +35"];
+    const CATEGORIAS_DEFAULT = ["Cadetes", "Sub-20", "Reserva", "Primera", "Veteranos +45", "Veteranos +35", "Veteranos +55"];
     let delegadosEmails: string[] = [];
     try {
+      // Uniones de clubes (Veteranos +55): una unión no tiene delegado propio,
+      // así que el aviso va a los delegados de los clubes que la forman.
+      const clubesDelAviso = new Set<string>([partido.club_local_id, partido.club_visitante_id]);
+      const { data: miembros } = await supabase
+        .from("uniones_clubes")
+        .select("union_id, miembro_id")
+        .in("union_id", [partido.club_local_id, partido.club_visitante_id]);
+      (miembros || []).forEach((u: any) => clubesDelAviso.add(u.miembro_id));
+
       const { data: perfilesClubes } = await supabase
         .from("perfiles")
         .select("id, categorias")
         .eq("rol", "delegado")
-        .in("club_id", [partido.club_local_id, partido.club_visitante_id]);
+        .in("club_id", [...clubesDelAviso]);
       const perfilesQueVen = (perfilesClubes || []).filter((p: any) => {
         const efectivas = p.categorias && p.categorias.length ? p.categorias : CATEGORIAS_DEFAULT;
         return efectivas.includes(partido.categoria);

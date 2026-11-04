@@ -921,6 +921,7 @@
     text-align: center; line-height: 1.2; max-width: 90px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;
   }
+  .vs-team-nombre.vs-union { white-space: normal; overflow: visible; text-overflow: clip; font-size: 10.5px; }
   .vs-versus {
     display: flex; align-items: center; gap: 5px; flex-shrink: 0;
   }
@@ -1078,6 +1079,7 @@
     <button class="ctab" onclick="selectCat(this,'Cadetes')">Cadetes</button>
     <button class="ctab" onclick="selectCat(this,'Veteranos +45')">Veteranos +45</button>
     <button class="ctab" onclick="selectCat(this,'Veteranos +35')">Veteranos +35</button>
+    <button class="ctab" onclick="selectCat(this,'Veteranos +55')">Veteranos +55</button>
   </div>
 
   <!-- Tabs sección -->
@@ -1159,6 +1161,7 @@
       <button class="bn-item" onclick="selectAdminCat(this,'Cadetes')">Cadetes</button>
       <button class="bn-item" onclick="selectAdminCat(this,'Veteranos +45')">+45</button>
       <button class="bn-item" onclick="selectAdminCat(this,'Veteranos +35')">+35</button>
+      <button class="bn-item" onclick="selectAdminCat(this,'Veteranos +55')">+55</button>
       <button class="bn-item" onclick="selectAdminCat(this,'Femenino')">Femenino</button>
     </nav>
   </div>
@@ -1212,6 +1215,7 @@
               <option value="Primera">Primera</option>
               <option value="Veteranos +45">Veteranos +45</option>
               <option value="Veteranos +35">Veteranos +35</option>
+              <option value="Veteranos +55">Veteranos +55</option>
               <option value="Femenino">Femenino</option>
             </select>
           </div>
@@ -1365,7 +1369,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // `categorias` asignadas en su perfil (compatibilidad con los delegados de
 // siempre). Femenino queda afuera de esta lista a propósito: solo la ve
 // quien tenga `categorias: ["Femenino"]` puesto explícitamente.
-const CATEGORIAS_DEFAULT = ["Primera", "Reserva", "Sub-20", "Cadetes", "Veteranos +45", "Veteranos +35"];
+const CATEGORIAS_DEFAULT = ["Primera", "Reserva", "Sub-20", "Cadetes", "Veteranos +45", "Veteranos +35", "Veteranos +55"];
 const CATEGORIAS = [...CATEGORIAS_DEFAULT, "Femenino"];
 
 // Categorías que le corresponden a un perfil de delegado: las suyas propias
@@ -1377,7 +1381,7 @@ function categoriasVisiblesPerfil(perfil) {
 // Texto corto para los botones del nav (pill), donde el nombre completo no
 // entra cómodo. En encabezados de tablas y el <select> se usa el nombre
 // completo tal cual, ahí sí hay lugar.
-const CATEGORIA_LABEL_CORTO = { "Veteranos +45": "+45", "Veteranos +35": "+35" };
+const CATEGORIA_LABEL_CORTO = { "Veteranos +45": "+45", "Veteranos +35": "+35", "Veteranos +55": "+55" };
 function categoriaLabelCorto(cat) {
   return CATEGORIA_LABEL_CORTO[cat] || cat;
 }
@@ -1386,7 +1390,7 @@ function categoriaLabelCorto(cat) {
 // columna fija por categoría en esa tabla, mantenida por cargar_partido).
 const COL_AMARILLAS_POR_CATEGORIA = {
   "Cadetes": "cadetes", "Sub-20": "sub_20", "Reserva": "reserva", "Primera": "primera",
-  "Veteranos +45": "veteranos_45", "Veteranos +35": "veteranos_35", "Femenino": "femenino"
+  "Veteranos +45": "veteranos_45", "Veteranos +35": "veteranos_35", "Veteranos +55": "veteranos_55", "Femenino": "femenino"
 };
 
 // Escudos y color dominante de cada club (extraído de los PNG que subieron).
@@ -1400,6 +1404,9 @@ const CLUBES_VISUAL = {
   "San Isidro":          { logo: "./san_isidro.png",            color: "#e07000" },
   "Sol Naciente":        { logo: "./sol_naciente.png",           color: "#b00000" },
   "Sol de América":      { logo: "./sol_de_america.png",         color: "#c9a227" },
+  // Uniones de clubes (Veteranos +55): escudo mitad y mitad de los dos clubes
+  "San Antonio / Sol Naciente": { logo: "./union_sanantonio_solnaciente.png", color: "#e02020" },
+  "Camba Porá / San Isidro":    { logo: "./union_cambapora_sanisidro.png",    color: "#006000" },
   "Las Reinas del Balón": { logo: "./las_reinas_del_balon.png",  color: "#e0399b" },
   "Soñadoras":           { logo: "./sonadoras.png",              color: "#d6408a" }
 };
@@ -1436,7 +1443,30 @@ async function ensureClubes() {
   const { data, error } = await sb.from("clubes").select("id,nombre").order("nombre", { ascending: true });
   if (error) { console.error(error); return; }
   data.forEach(c => { clubesCache[c.id] = c.nombre; clubesPorNombre[c.nombre] = c.id; });
+  await cargarUniones();
   clubesLoaded = true;
+}
+
+// Uniones de clubes (Veteranos +55): dos clubes que arman un solo equipo.
+// La unión es un club más (con su plantel y su tabla); los delegados de los
+// clubes que la forman ven y reciben todo lo de la unión en esa categoría.
+const CATEGORIA_UNIONES = "Veteranos +55";
+let unionesDeMiembro = {};   // { idClubMiembro: [idClubUnion, ...] }
+let unionIds = new Set();    // ids de los clubes que son uniones
+async function cargarUniones() {
+  const { data, error } = await sb.from("uniones_clubes").select("union_id,miembro_id");
+  if (error) { console.warn("Uniones no disponibles todavía:", error.message); return; }
+  unionesDeMiembro = {}; unionIds = new Set();
+  (data || []).forEach(u => {
+    unionIds.add(u.union_id);
+    (unionesDeMiembro[u.miembro_id] = unionesDeMiembro[u.miembro_id] || []).push(u.union_id);
+  });
+}
+// Club cuyos datos se muestran en "Mi Club" para una categoría: en +55 es la
+// unión de la que forma parte el club del delegado; en el resto, su propio club.
+function clubParaCategoria(clubId, cat) {
+  if (cat !== CATEGORIA_UNIONES) return clubId;
+  return (unionesDeMiembro[clubId] || [])[0] || clubId;
 }
 
 // Sesión actual
@@ -1560,21 +1590,31 @@ async function initApp() {
   }
 
   await ensureClubes();
-  const nombresOrdenados = Object.keys(clubesPorNombre).sort((a, b) => a.localeCompare(b, "es"));
+  armarSelectsClubes();
+  resetWizard();
+  goToStep1();
+}
+
+// Las uniones de clubes solo juegan en Veteranos +55: en las demás categorías
+// no se ofrecen como equipo.
+function armarSelectsClubes() {
+  const cat = document.getElementById("categoria").value;
+  const nombresOrdenados = Object.keys(clubesPorNombre).sort((a, b) => a.localeCompare(b, "es"))
+    .filter(n => cat === CATEGORIA_UNIONES || !unionIds.has(clubesPorNombre[n]));
   ["club-local", "club-visitante"].forEach(id => {
     const sel = document.getElementById(id);
+    const actual = sel.value;
     sel.innerHTML = '<option value="">Seleccionar club...</option>';
     nombresOrdenados.forEach(nombre => {
       const o = document.createElement("option");
       o.value = clubesPorNombre[nombre]; o.textContent = nombre;
       sel.appendChild(o);
     });
+    if ([...sel.options].some(o => o.value === actual)) sel.value = actual;
   });
-  resetWizard();
-  goToStep1();
 }
 
-function onCategoriaChange() { onClubChange(); }
+function onCategoriaChange() { armarSelectsClubes(); onClubChange(); }
 
 function onClubChange() {
   // nothing needed at step 1
@@ -2620,7 +2660,7 @@ async function renderFixture(cat, editable) {
           <div class="vs-card-row">
             <div class="vs-team">
               ${vsTeamEscudo(localNombre)}
-              <div class="vs-team-nombre">${esc(localNombre)}</div>
+              <div class="vs-team-nombre${localNombre.includes(" / ") ? " vs-union" : ""}">${esc(localNombre)}</div>
             </div>
             <div class="vs-versus">
               <span class="vs-gol">${r.goles_local ?? "-"}</span>
@@ -2629,7 +2669,7 @@ async function renderFixture(cat, editable) {
             </div>
             <div class="vs-team">
               ${vsTeamEscudo(visNombre)}
-              <div class="vs-team-nombre">${esc(visNombre)}</div>
+              <div class="vs-team-nombre${visNombre.includes(" / ") ? " vs-union" : ""}">${esc(visNombre)}</div>
             </div>
           </div>
           <button class="vs-toggle" id="vsbtn-${r.id}"
@@ -3116,7 +3156,7 @@ async function agregarJugadorAdmin(cat) {
 // en la categoría elegida, y marca si además acumula en otra.
 async function renderAmarillasAdmin(cat) {
   const { data } = await sb.from("acumulado_amarillas")
-    .select("nombre,club_id,total,en_suspension,cadetes,sub_20,reserva,primera,veteranos_45,veteranos_35,femenino")
+    .select("nombre,club_id,total,en_suspension,cadetes,sub_20,reserva,primera,veteranos_45,veteranos_35,veteranos_55,femenino")
     .order("total", { ascending: false });
   const colActual = COL_AMARILLAS_POR_CATEGORIA[cat];
   const amarillas = (data || []).filter(a => a[colActual] > 0);
@@ -3151,8 +3191,8 @@ let miClubSecActual = "posiciones";
 async function renderMiClub() {
   const cont = document.getElementById("miclub-content");
   cont.innerHTML = '<div class="no-data">Cargando...</div>';
-  const clubId = currentPerfil.club_id;
   const cat = miClubCatActual;
+  const clubId = clubParaCategoria(currentPerfil.club_id, cat);
   const sec = miClubSecActual;
 
   if (sec === "posiciones") {
@@ -3187,7 +3227,7 @@ async function renderMiClub() {
   }
   if (sec === "amarillas") {
     const { data } = await sb.from("acumulado_amarillas")
-      .select("nombre,total,en_suspension,cadetes,sub_20,reserva,primera,veteranos_45,veteranos_35,femenino")
+      .select("nombre,total,en_suspension,cadetes,sub_20,reserva,primera,veteranos_45,veteranos_35,veteranos_55,femenino")
       .eq("club_id", clubId).order("total", { ascending: false });
     const colActual = COL_AMARILLAS_POR_CATEGORIA[cat];
     // Solo jugadores con amarillas en ESTA categoría.
